@@ -80,15 +80,16 @@ let bounce = 0, bounceDir = 1;
 let dinoImg = null;
 let loaded = false;
 
+// Load image - try local first, then Pinterest
 const img = new Image();
 img.crossOrigin = 'anonymous';
 img.onload = () => { dinoImg = img; loaded = true; };
 img.onerror = () => {
   const img2 = new Image();
   img2.onload = () => { dinoImg = img2; loaded = true; };
-  img2.src = img.src;
+  img2.src = 'baby.jpg';
 };
-img.src = 'https://i.pinimg.com/736x/83/19/bf/8319bf3730ce8c53879cff89943eef90.jpg';
+img.src = 'baby.jpg';
 
 function setSkin(s) {
   currentSkin = s;
@@ -97,36 +98,28 @@ function setSkin(s) {
 }
 
 /*
-  Image is 736x736. Scaled to 340 wide → scale=0.462, drawH=340, offsetY=45.
-  Baby Sinclair body landmarks (measured from the actual image):
-    Head top:      ~15% img → canvas y ≈ 96
-    Eye level:     ~28% img → canvas y ≈ 140
-    Chin:          ~38% img → canvas y ≈ 174
-    Shoulders:     ~43% img → canvas y ≈ 190
-    Mid-chest:     ~50% img → canvas y ≈ 215
-    Belly/waist:   ~58% img → canvas y ≈ 242
-    Diaper top:    ~63% img → canvas y ≈ 258
-    Crotch:        ~70% img → canvas y ≈ 283
-    Feet:          ~88% img → canvas y ≈ 344
+  Image: 736x717. Canvas: 340x450.
+  scale = 340/736 = 0.4620
+  drawH = 717 * 0.4620 = 331.2
+  offsetY = (450 - 331.2) / 2 - 10 = 49.4
 
-    Body center X: ~50% img → canvas x ≈ 170
-    Torso left:    ~37% img → canvas x ≈ 126
-    Torso right:   ~63% img → canvas x ≈ 214
-    Torso width:   ~88px (±44 from center)
+  Body landmarks measured from actual image (canvas coords):
 */
-
-const LM = {
-  cx: 170,           // body center x
-  headTop: 96,       // top of skull
-  eyeY: 140,         // eye level
-  chinY: 174,        // chin
-  shoulderY: 190,    // shoulder line
-  chestY: 215,       // mid chest
-  waistY: 242,       // belly / waist
-  diaperY: 258,      // diaper top
-  crotchY: 283,      // crotch
-  feetY: 344,        // feet
-  torsoHalf: 44,     // half-width of torso
+const L = {
+  cx: 170,            // body center X
+  headTopY: 63,       // top of skull/spikes
+  foreheadY: 99,      // forehead
+  eyeY: 132,          // eye line
+  mouthY: 165,        // mouth
+  chinY: 182,         // chin
+  shoulderY: 202,     // shoulders
+  chestY: 232,        // mid-chest
+  waistY: 255,        // belly/waist
+  diaperTopY: 271,    // top of diaper
+  crotchY: 298,       // crotch
+  kneeY: 321,         // knees
+  feetY: 357,         // feet
+  torsoHalf: 51,      // half-width of torso
 };
 
 function drawBackground() {
@@ -170,9 +163,6 @@ function drawSceneDecor() {
     ctx.fillStyle = '#d4a056'; ctx.fillRect(0, H - 75, W, 75);
     ctx.fillStyle = '#c49046';
     ctx.beginPath(); ctx.ellipse(W/2, H - 55, 155, 28, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(0, 0, W, 30);
-    ctx.fillStyle = '#ffcc80';
-    for (let i = 0; i < 14; i++) { ctx.beginPath(); ctx.arc(i * 26 + 10, 15, 4, 0, Math.PI * 2); ctx.fill(); }
   }
   if (currentSkin === 'maraton') {
     ctx.fillStyle = '#616161'; ctx.fillRect(0, H - 55, W, 55);
@@ -195,9 +185,9 @@ function drawSceneDecor() {
     ctx.fillStyle = '#4e342e'; ctx.fillRect(0, H - 45, W, 45);
     ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.arc(W/2, H/2, 120, -0.3, Math.PI * 1.7); ctx.stroke();
-    for (let i of [35, W - 35]) {
-      ctx.fillStyle = '#fff3e0'; ctx.fillRect(i - 3, H - 72, 6, 26);
-      ctx.fillStyle = '#ff9800'; ctx.beginPath(); ctx.ellipse(i, H - 77, 4, 7, 0, 0, Math.PI * 2); ctx.fill();
+    for (let x of [35, W - 35]) {
+      ctx.fillStyle = '#fff3e0'; ctx.fillRect(x - 3, H - 72, 6, 26);
+      ctx.fillStyle = '#ff9800'; ctx.beginPath(); ctx.ellipse(x, H - 77, 4, 7, 0, 0, Math.PI * 2); ctx.fill();
     }
   }
 }
@@ -207,233 +197,290 @@ function drawDinoImage() {
   const scale = W / dinoImg.naturalWidth;
   const drawH2 = dinoImg.naturalHeight * scale;
   const offsetY = (H - drawH2) / 2 - 10;
-  bounce += 0.45 * bounceDir;
-  if (bounce > 3.5 || bounce < -3.5) bounceDir *= -1;
+  bounce += 0.4 * bounceDir;
+  if (bounce > 3 || bounce < -3) bounceDir *= -1;
   ctx.save();
   ctx.translate(0, bounce);
   ctx.drawImage(dinoImg, 0, offsetY, W, drawH2);
   ctx.restore();
 }
 
-function drawSkinOverlays() {
-  const L = LM;
+function drawClothing() {
   const by = bounce;
   ctx.save();
   ctx.translate(0, by);
 
-  // -- TODDLER --
+  const cx = L.cx;
+  const tw = L.torsoHalf; // 51px half-width
+
+  // ============ TODDLER ============
   if (currentSkin === 'toddler') {
-    // Bib
-    ctx.fillStyle = '#FFD700';
+    // Bib hanging from neck to mid-chest
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.85)';
     ctx.beginPath();
-    ctx.moveTo(L.cx - 22, L.shoulderY + 5);
-    ctx.lineTo(L.cx + 22, L.shoulderY + 5);
-    ctx.lineTo(L.cx + 18, L.shoulderY + 38);
-    ctx.lineTo(L.cx - 18, L.shoulderY + 38);
+    ctx.moveTo(cx - 25, L.shoulderY - 5);
+    ctx.lineTo(cx + 25, L.shoulderY - 5);
+    ctx.lineTo(cx + 20, L.chestY + 5);
+    ctx.arc(cx, L.chestY + 5, 20, 0, Math.PI);
     ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#e53935';
+    // Bib border
+    ctx.strokeStyle = 'rgba(218, 165, 32, 0.9)'; ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // Bib text
+    ctx.fillStyle = '#c62828';
     ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('NOT THE', L.cx, L.shoulderY + 19);
-    ctx.fillText('MAMA!', L.cx, L.shoulderY + 31);
+    ctx.fillText('NOT THE', cx, L.shoulderY + 12);
+    ctx.fillText('MAMA!', cx, L.shoulderY + 24);
   }
 
-  // -- MONJE --
+  // ============ MONJE ============
   if (currentSkin === 'monje') {
-    // Robe - just on torso, not covering arms
-    ctx.fillStyle = 'rgba(93, 64, 55, 0.82)';
+    // Brown robe covering torso - shaped to body
+    ctx.fillStyle = 'rgba(93, 64, 55, 0.80)';
     ctx.beginPath();
-    ctx.moveTo(L.cx - L.torsoHalf, L.shoulderY);
-    ctx.lineTo(L.cx + L.torsoHalf, L.shoulderY);
-    ctx.lineTo(L.cx + L.torsoHalf - 4, L.diaperY + 10);
-    ctx.lineTo(L.cx - L.torsoHalf + 4, L.diaperY + 10);
+    ctx.moveTo(cx - tw + 5, L.chinY + 5);  // starts at neckline
+    ctx.lineTo(cx + tw - 5, L.chinY + 5);
+    ctx.lineTo(cx + tw + 3, L.shoulderY + 5); // widens at shoulders
+    ctx.lineTo(cx + tw + 5, L.crotchY);       // down to legs
+    ctx.lineTo(cx - tw - 5, L.crotchY);
+    ctx.lineTo(cx - tw - 3, L.shoulderY + 5);
     ctx.closePath(); ctx.fill();
-    // Rope belt
-    ctx.strokeStyle = '#d7ccc8'; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(L.cx - L.torsoHalf + 2, L.waistY);
-    ctx.lineTo(L.cx + L.torsoHalf - 2, L.waistY); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(L.cx + 15, L.waistY);
-    ctx.lineTo(L.cx + 10, L.waistY + 22); ctx.stroke();
-    // Hood - sits on top of head, not covering face
-    ctx.fillStyle = 'rgba(93, 64, 55, 0.75)';
+    // V-neck opening
+    ctx.fillStyle = 'rgba(93, 64, 55, 0)'; // transparent V
     ctx.beginPath();
-    ctx.moveTo(L.cx - 42, L.eyeY - 10);
-    ctx.quadraticCurveTo(L.cx, L.headTop - 45, L.cx + 42, L.eyeY - 10);
-    ctx.lineTo(L.cx + 46, L.eyeY);
-    ctx.quadraticCurveTo(L.cx, L.headTop - 30, L.cx - 46, L.eyeY);
+    ctx.moveTo(cx - 15, L.chinY + 5);
+    ctx.lineTo(cx, L.chestY - 5);
+    ctx.lineTo(cx + 15, L.chinY + 5);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(0,0,0,0)';
+    // Rope belt at waist
+    ctx.strokeStyle = '#d7ccc8'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(cx - tw, L.waistY + 3);
+    ctx.lineTo(cx + tw, L.waistY + 3); ctx.stroke();
+    // Hanging rope end
+    ctx.beginPath(); ctx.moveTo(cx + 18, L.waistY + 3);
+    ctx.quadraticCurveTo(cx + 22, L.waistY + 15, cx + 14, L.waistY + 25); ctx.stroke();
+    // Hood sitting behind/on top of head
+    ctx.fillStyle = 'rgba(93, 64, 55, 0.7)';
+    ctx.beginPath();
+    ctx.moveTo(cx - 48, L.eyeY - 5);
+    ctx.quadraticCurveTo(cx, L.headTopY - 40, cx + 48, L.eyeY - 5);
+    ctx.lineTo(cx + 50, L.eyeY + 8);
+    ctx.quadraticCurveTo(cx, L.headTopY - 25, cx - 50, L.eyeY + 8);
     ctx.closePath(); ctx.fill();
   }
 
-  // -- CICLISTA --
+  // ============ CICLISTA ============
   if (currentSkin === 'ciclista') {
-    // Jersey
-    ctx.fillStyle = 'rgba(253, 216, 53, 0.85)';
+    // Yellow jersey - fitted to torso
+    ctx.fillStyle = 'rgba(253, 216, 53, 0.82)';
     ctx.beginPath();
-    ctx.moveTo(L.cx - L.torsoHalf, L.shoulderY);
-    ctx.lineTo(L.cx + L.torsoHalf, L.shoulderY);
-    ctx.lineTo(L.cx + L.torsoHalf - 3, L.waistY);
-    ctx.lineTo(L.cx - L.torsoHalf + 3, L.waistY);
+    ctx.moveTo(cx - tw + 3, L.shoulderY + 3);
+    ctx.quadraticCurveTo(cx, L.shoulderY - 2, cx + tw - 3, L.shoulderY + 3);
+    ctx.lineTo(cx + tw, L.waistY + 5);
+    ctx.lineTo(cx - tw, L.waistY + 5);
     ctx.closePath(); ctx.fill();
-    // Stripes
-    ctx.fillStyle = 'rgba(245, 127, 23, 0.85)';
-    ctx.fillRect(L.cx - L.torsoHalf + 2, L.chestY - 5, L.torsoHalf * 2 - 4, 5);
-    ctx.fillRect(L.cx - L.torsoHalf + 2, L.chestY + 12, L.torsoHalf * 2 - 4, 5);
-    // Number
-    ctx.fillStyle = '#212121'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('69', L.cx, L.chestY - 8);
-    // Shorts
-    ctx.fillStyle = 'rgba(33,33,33,0.8)';
-    ctx.fillRect(L.cx - L.torsoHalf + 2, L.waistY, L.torsoHalf * 2 - 4, 22);
-    // Helmet
-    ctx.fillStyle = 'rgba(38,50,56,0.88)';
+    // Horizontal stripes
+    ctx.fillStyle = 'rgba(245, 127, 23, 0.8)';
+    const stripeW = tw * 2 - 6;
+    ctx.fillRect(cx - tw + 3, L.chestY - 3, stripeW, 5);
+    ctx.fillRect(cx - tw + 3, L.chestY + 14, stripeW, 5);
+    // Number on chest
+    ctx.fillStyle = '#212121'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('69', cx, L.chestY - 7);
+    // Black shorts
+    ctx.fillStyle = 'rgba(33, 33, 33, 0.78)';
+    ctx.fillRect(cx - tw + 2, L.waistY + 5, tw * 2 - 4, L.diaperTopY - L.waistY + 5);
+    // Aero helmet - elongated shape on head
+    ctx.fillStyle = 'rgba(38, 50, 56, 0.88)';
     ctx.beginPath();
-    ctx.ellipse(L.cx, L.headTop + 8, 48, 22, 0, Math.PI, 0); ctx.fill();
-    // Vents
-    ctx.fillStyle = '#455a64';
-    for (let i = -2; i <= 2; i++) ctx.fillRect(L.cx + i * 12 - 2, L.headTop - 10, 5, 10);
-    // Visor
-    ctx.fillStyle = 'rgba(0,188,212,0.4)';
-    ctx.beginPath(); ctx.ellipse(L.cx, L.headTop + 12, 50, 6, 0, 0, Math.PI); ctx.fill();
+    ctx.ellipse(cx, L.foreheadY - 5, 50, 28, 0, Math.PI + 0.2, -0.2); ctx.fill();
+    // Helmet tail
+    ctx.beginPath();
+    ctx.moveTo(cx + 25, L.foreheadY - 25);
+    ctx.quadraticCurveTo(cx + 55, L.foreheadY - 30, cx + 45, L.foreheadY - 10);
+    ctx.lineTo(cx + 30, L.foreheadY - 8);
+    ctx.closePath(); ctx.fill();
+    // Visor strip
+    ctx.fillStyle = 'rgba(0, 188, 212, 0.4)';
+    ctx.beginPath(); ctx.ellipse(cx, L.foreheadY + 2, 48, 6, 0, 0, Math.PI); ctx.fill();
   }
 
-  // -- MARATON --
+  // ============ MARATON ============
   if (currentSkin === 'maraton') {
-    // Singlet
-    ctx.fillStyle = 'rgba(229,57,53,0.82)';
+    // Running singlet
+    ctx.fillStyle = 'rgba(229, 57, 53, 0.80)';
     ctx.beginPath();
-    ctx.moveTo(L.cx - L.torsoHalf + 5, L.shoulderY);
-    ctx.lineTo(L.cx + L.torsoHalf - 5, L.shoulderY);
-    ctx.lineTo(L.cx + L.torsoHalf - 6, L.waistY);
-    ctx.lineTo(L.cx - L.torsoHalf + 6, L.waistY);
+    ctx.moveTo(cx - tw + 8, L.shoulderY + 3);
+    ctx.lineTo(cx + tw - 8, L.shoulderY + 3);
+    ctx.lineTo(cx + tw - 5, L.waistY + 3);
+    ctx.lineTo(cx - tw + 5, L.waistY + 3);
     ctx.closePath(); ctx.fill();
-    // Number bib
+    // Race bib
     ctx.fillStyle = '#fff';
-    ctx.fillRect(L.cx - 18, L.chestY - 8, 36, 22);
-    ctx.fillStyle = '#000'; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center';
-    ctx.fillText('502', L.cx, L.chestY + 9);
-    // Shorts
-    ctx.fillStyle = 'rgba(26,35,126,0.8)';
-    ctx.fillRect(L.cx - L.torsoHalf + 4, L.waistY, L.torsoHalf * 2 - 8, 20);
+    ctx.fillRect(cx - 20, L.chestY - 8, 40, 24);
+    ctx.strokeStyle = '#ccc'; ctx.lineWidth = 0.5;
+    ctx.strokeRect(cx - 20, L.chestY - 8, 40, 24);
+    ctx.fillStyle = '#000'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('502', cx, L.chestY + 11);
+    // Running shorts
+    ctx.fillStyle = 'rgba(26, 35, 126, 0.78)';
+    ctx.fillRect(cx - tw + 4, L.waistY + 3, tw * 2 - 8, L.diaperTopY - L.waistY + 8);
     // Headband
-    ctx.fillStyle = 'rgba(229,57,53,0.88)';
-    ctx.fillRect(L.cx - 45, L.eyeY - 18, 90, 7);
-    // Sweat drops
-    ctx.fillStyle = 'rgba(41,182,246,0.55)';
-    const sw = (Date.now() / 14) % 45;
-    ctx.beginPath(); ctx.arc(L.cx - 42, L.eyeY - 5 + sw, 2.5, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(L.cx + 44, L.eyeY + sw * 0.6, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(229, 57, 53, 0.85)';
+    ctx.fillRect(cx - 48, L.foreheadY - 2, 96, 7);
+    // Sweat drops animating down
+    ctx.fillStyle = 'rgba(41, 182, 246, 0.5)';
+    const sw = (Date.now() / 14) % 50;
+    ctx.beginPath(); ctx.arc(cx - 46, L.foreheadY + 10 + sw, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 48, L.foreheadY + 15 + sw * 0.6, 2, 0, Math.PI * 2); ctx.fill();
   }
 
-  // -- JURASSIC --
+  // ============ JURASSIC PARK ============
   if (currentSkin === 'jurassic') {
-    // Khaki vest
-    ctx.fillStyle = 'rgba(161,136,127,0.85)';
+    // Khaki utility vest
+    ctx.fillStyle = 'rgba(161, 136, 127, 0.82)';
     ctx.beginPath();
-    ctx.moveTo(L.cx - L.torsoHalf - 2, L.shoulderY);
-    ctx.lineTo(L.cx + L.torsoHalf + 2, L.shoulderY);
-    ctx.lineTo(L.cx + L.torsoHalf, L.diaperY);
-    ctx.lineTo(L.cx - L.torsoHalf, L.diaperY);
+    ctx.moveTo(cx - tw, L.shoulderY + 2);
+    ctx.lineTo(cx + tw, L.shoulderY + 2);
+    ctx.lineTo(cx + tw - 2, L.diaperTopY + 5);
+    ctx.lineTo(cx - tw + 2, L.diaperTopY + 5);
     ctx.closePath(); ctx.fill();
-    // Pockets
-    ctx.strokeStyle = '#795548'; ctx.lineWidth = 1.2;
-    ctx.strokeRect(L.cx - L.torsoHalf + 5, L.waistY - 15, 18, 13);
-    ctx.strokeRect(L.cx + L.torsoHalf - 23, L.waistY - 15, 18, 13);
-    // InGen badge
-    ctx.fillStyle = '#fff'; ctx.fillRect(L.cx + 10, L.shoulderY + 4, 24, 11);
+    // Vest opening (V shape in front)
+    ctx.strokeStyle = '#795548'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx - 5, L.shoulderY + 2);
+    ctx.lineTo(cx, L.chestY + 5);
+    ctx.lineTo(cx + 5, L.shoulderY + 2); ctx.stroke();
+    // Chest pockets
+    ctx.strokeRect(cx - tw + 6, L.chestY - 5, 18, 14);
+    ctx.strokeRect(cx + tw - 24, L.chestY - 5, 18, 14);
+    // Pocket flaps
+    ctx.fillStyle = 'rgba(121, 85, 72, 0.5)';
+    ctx.fillRect(cx - tw + 6, L.chestY - 5, 18, 4);
+    ctx.fillRect(cx + tw - 24, L.chestY - 5, 18, 4);
+    // InGen badge on right chest
+    ctx.fillStyle = '#fff'; ctx.fillRect(cx + 14, L.shoulderY + 6, 26, 12);
     ctx.fillStyle = '#e53935'; ctx.font = 'bold 7px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('InGen', L.cx + 22, L.shoulderY + 12);
-    // Shorts
-    ctx.fillStyle = 'rgba(188,170,164,0.8)';
-    ctx.fillRect(L.cx - L.torsoHalf + 2, L.diaperY, L.torsoHalf * 2 - 4, 18);
-    // Safari hat
-    ctx.fillStyle = 'rgba(141,110,99,0.88)';
-    ctx.beginPath(); ctx.ellipse(L.cx, L.headTop + 2, 55, 10, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#795548';
-    ctx.beginPath(); ctx.ellipse(L.cx, L.headTop - 5, 34, 16, 0, Math.PI, 0); ctx.fill();
-    ctx.fillStyle = '#4e342e'; ctx.fillRect(L.cx - 34, L.headTop - 2, 68, 4);
+    ctx.fillText('InGen', cx + 27, L.shoulderY + 15);
+    // Khaki shorts
+    ctx.fillStyle = 'rgba(188, 170, 164, 0.78)';
+    ctx.fillRect(cx - tw + 3, L.diaperTopY + 5, tw * 2 - 6, L.crotchY - L.diaperTopY);
+    // Safari hat - wide brim sitting on head
+    ctx.fillStyle = 'rgba(141, 110, 99, 0.88)';
+    ctx.beginPath(); ctx.ellipse(cx, L.foreheadY - 8, 58, 10, 0, 0, Math.PI * 2); ctx.fill();
+    // Hat dome
+    ctx.fillStyle = 'rgba(121, 85, 72, 0.88)';
+    ctx.beginPath(); ctx.ellipse(cx, L.foreheadY - 16, 36, 18, 0, Math.PI, 0); ctx.fill();
+    // Hat band
+    ctx.fillStyle = '#4e342e'; ctx.fillRect(cx - 36, L.foreheadY - 13, 72, 4);
   }
 
-  // -- TORERO --
+  // ============ TORERO ============
   if (currentSkin === 'torero') {
-    // Jacket
-    ctx.fillStyle = 'rgba(183,28,28,0.85)';
+    // Traje de luces jacket - fitted
+    ctx.fillStyle = 'rgba(183, 28, 28, 0.82)';
     ctx.beginPath();
-    ctx.moveTo(L.cx - L.torsoHalf - 2, L.shoulderY);
-    ctx.lineTo(L.cx + L.torsoHalf + 2, L.shoulderY);
-    ctx.lineTo(L.cx + L.torsoHalf, L.waistY + 5);
-    ctx.lineTo(L.cx - L.torsoHalf, L.waistY + 5);
+    ctx.moveTo(cx - tw - 2, L.shoulderY);
+    ctx.lineTo(cx + tw + 2, L.shoulderY);
+    ctx.lineTo(cx + tw, L.waistY + 8);
+    ctx.lineTo(cx - tw, L.waistY + 8);
     ctx.closePath(); ctx.fill();
-    // Gold trim
+    // Gold embroidery trim
     ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 2;
-    ctx.strokeRect(L.cx - L.torsoHalf, L.shoulderY + 1, L.torsoHalf * 2, L.waistY - L.shoulderY + 3);
-    // Epaulettes
+    ctx.strokeRect(cx - tw, L.shoulderY + 1, tw * 2, L.waistY - L.shoulderY + 6);
+    // Cross pattern on chest
+    ctx.beginPath(); ctx.moveTo(cx, L.shoulderY + 3); ctx.lineTo(cx, L.waistY + 5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx - 25, L.chestY); ctx.lineTo(cx + 25, L.chestY); ctx.stroke();
+    // Epaulettes (gold shoulder pads)
     ctx.fillStyle = '#FFD700';
-    ctx.beginPath(); ctx.arc(L.cx - L.torsoHalf - 2, L.shoulderY + 6, 7, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(L.cx + L.torsoHalf + 2, L.shoulderY + 6, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx - tw - 3, L.shoulderY + 5, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + tw + 3, L.shoulderY + 5, 8, 0, Math.PI * 2); ctx.fill();
+    // Gold tassels on epaulettes
+    ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath(); ctx.moveTo(cx - tw - 8 + i * 3, L.shoulderY + 12);
+      ctx.lineTo(cx - tw - 8 + i * 3, L.shoulderY + 20); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + tw - 1 + i * 3, L.shoulderY + 12);
+      ctx.lineTo(cx + tw - 1 + i * 3, L.shoulderY + 20); ctx.stroke();
+    }
     // Tight pants
-    ctx.fillStyle = 'rgba(136,14,79,0.82)';
-    ctx.fillRect(L.cx - L.torsoHalf + 2, L.waistY + 5, L.torsoHalf * 2 - 4, 35);
-    // Gold side stripes
+    ctx.fillStyle = 'rgba(136, 14, 79, 0.80)';
+    ctx.fillRect(cx - tw + 3, L.waistY + 8, tw * 2 - 6, L.crotchY - L.waistY);
+    // Gold side stripes on pants
     ctx.fillStyle = '#FFD700';
-    ctx.fillRect(L.cx - L.torsoHalf + 2, L.waistY + 5, 3, 35);
-    ctx.fillRect(L.cx + L.torsoHalf - 5, L.waistY + 5, 3, 35);
-    // Montera
-    ctx.fillStyle = 'rgba(26,26,26,0.88)';
-    ctx.beginPath(); ctx.ellipse(L.cx, L.headTop + 4, 44, 12, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(L.cx, L.headTop - 5, 30, 18, 0, Math.PI, 0); ctx.fill();
-    ctx.beginPath(); ctx.arc(L.cx - 32, L.headTop + 8, 8, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(L.cx + 32, L.headTop + 8, 8, 0, Math.PI * 2); ctx.fill();
-    // Cape (animated)
-    const capeSwing = Math.sin(Date.now() / 400) * 10;
-    ctx.fillStyle = 'rgba(233,30,99,0.55)';
+    ctx.fillRect(cx - tw + 3, L.waistY + 8, 3, L.crotchY - L.waistY);
+    ctx.fillRect(cx + tw - 6, L.waistY + 8, 3, L.crotchY - L.waistY);
+    // Montera (bullfighter hat)
+    ctx.fillStyle = 'rgba(26, 26, 26, 0.88)';
+    // Brim
+    ctx.beginPath(); ctx.ellipse(cx, L.foreheadY - 6, 48, 12, 0, 0, Math.PI * 2); ctx.fill();
+    // Dome
+    ctx.beginPath(); ctx.ellipse(cx, L.foreheadY - 15, 32, 20, 0, Math.PI, 0); ctx.fill();
+    // Side pompoms
+    ctx.beginPath(); ctx.arc(cx - 36, L.foreheadY, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 36, L.foreheadY, 8, 0, Math.PI * 2); ctx.fill();
+    // Cape (animated swing)
+    const capeSwing = Math.sin(Date.now() / 400) * 12;
+    // Main cape (magenta)
+    ctx.fillStyle = 'rgba(233, 30, 99, 0.5)';
     ctx.beginPath();
-    ctx.moveTo(L.cx + L.torsoHalf + 5, L.shoulderY + 10);
-    ctx.quadraticCurveTo(L.cx + 120, L.chestY + 30 + capeSwing, L.cx + 90, L.feetY - 10);
-    ctx.quadraticCurveTo(L.cx + 65, L.feetY - 30, L.cx + L.torsoHalf + 5, L.waistY + 15);
+    ctx.moveTo(cx + tw + 8, L.shoulderY + 10);
+    ctx.quadraticCurveTo(cx + 125, L.waistY + capeSwing, cx + 95, L.feetY - 5);
+    ctx.quadraticCurveTo(cx + 70, L.feetY - 25, cx + tw + 8, L.waistY + 15);
     ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(255,215,0,0.3)';
+    // Cape inner lining (gold)
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.25)';
     ctx.beginPath();
-    ctx.moveTo(L.cx + L.torsoHalf + 10, L.shoulderY + 20);
-    ctx.quadraticCurveTo(L.cx + 110, L.chestY + 25 + capeSwing * 0.8, L.cx + 85, L.feetY - 20);
-    ctx.quadraticCurveTo(L.cx + 65, L.feetY - 35, L.cx + L.torsoHalf + 10, L.waistY + 20);
+    ctx.moveTo(cx + tw + 13, L.shoulderY + 20);
+    ctx.quadraticCurveTo(cx + 115, L.waistY + capeSwing * 0.7, cx + 88, L.feetY - 15);
+    ctx.quadraticCurveTo(cx + 68, L.feetY - 30, cx + tw + 13, L.waistY + 20);
     ctx.closePath(); ctx.fill();
   }
 
-  // -- F1 FERRARI --
+  // ============ F1 FERRARI ============
   if (currentSkin === 'f1') {
-    // Full race suit
-    ctx.fillStyle = 'rgba(211,47,47,0.85)';
+    // Full race suit - one piece from shoulders to legs
+    ctx.fillStyle = 'rgba(211, 47, 47, 0.82)';
     ctx.beginPath();
-    ctx.moveTo(L.cx - L.torsoHalf, L.shoulderY);
-    ctx.lineTo(L.cx + L.torsoHalf, L.shoulderY);
-    ctx.lineTo(L.cx + L.torsoHalf - 2, L.crotchY);
-    ctx.lineTo(L.cx - L.torsoHalf + 2, L.crotchY);
+    ctx.moveTo(cx - tw, L.shoulderY + 2);
+    ctx.lineTo(cx + tw, L.shoulderY + 2);
+    ctx.lineTo(cx + tw - 2, L.crotchY + 5);
+    ctx.lineTo(cx - tw + 2, L.crotchY + 5);
     ctx.closePath(); ctx.fill();
-    // White stripe
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    ctx.fillRect(L.cx - 4, L.shoulderY, 8, L.crotchY - L.shoulderY);
-    // Ferrari text
+    // White center stripe
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+    ctx.fillRect(cx - 4, L.shoulderY + 2, 8, L.crotchY - L.shoulderY + 3);
+    // Ferrari logo
     ctx.fillStyle = '#FFD700'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('Ferrari', L.cx, L.shoulderY + 15);
+    ctx.fillText('Ferrari', cx, L.shoulderY + 16);
+    // Scuderia badge
+    ctx.fillStyle = '#FFD700';
+    ctx.beginPath(); ctx.arc(cx, L.chestY + 5, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#c62828';
+    ctx.font = '12px sans-serif'; ctx.fillText('🐴', cx, L.chestY + 10);
     // Sponsors
-    ctx.fillStyle = '#fff'; ctx.font = '7px sans-serif';
-    ctx.fillText('Shell', L.cx - 22, L.chestY + 5);
-    ctx.fillText('UPS', L.cx + 22, L.chestY + 5);
-    // Horse emoji
-    ctx.font = '16px sans-serif'; ctx.fillText('🐴', L.cx, L.waistY + 10);
-    // Helmet
-    ctx.fillStyle = 'rgba(211,47,47,0.9)';
-    ctx.beginPath(); ctx.ellipse(L.cx, L.headTop + 10, 48, 30, 0, Math.PI, 0); ctx.fill();
-    // Visor
-    ctx.fillStyle = 'rgba(33,33,33,0.6)';
-    ctx.beginPath(); ctx.ellipse(L.cx, L.headTop + 14, 44, 10, 0, 0, Math.PI * 0.8); ctx.fill();
-    // Number
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('16', L.cx, L.headTop - 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.font = '7px sans-serif';
+    ctx.fillText('Shell', cx - 25, L.waistY - 2);
+    ctx.fillText('UPS', cx + 25, L.waistY - 2);
+    // Race helmet - dome on top of head
+    ctx.fillStyle = 'rgba(211, 47, 47, 0.9)';
+    ctx.beginPath();
+    ctx.ellipse(cx, L.foreheadY - 5, 50, 32, 0, Math.PI, 0); ctx.fill();
+    // Visor (dark, across eye area)
+    ctx.fillStyle = 'rgba(33, 33, 33, 0.55)';
+    ctx.beginPath();
+    ctx.ellipse(cx, L.foreheadY + 3, 46, 11, 0, -0.1, Math.PI + 0.1); ctx.fill();
+    // Helmet number
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('16', cx, L.foreheadY - 15);
+    // Visor reflection
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.beginPath(); ctx.ellipse(cx - 10, L.foreheadY, 15, 4, -0.3, 0, Math.PI * 2); ctx.fill();
   }
 
   ctx.restore();
 
-  // Speech bubble (outside bounce transform)
+  // ===== SPEECH BUBBLE (outside bounce) =====
   mouthPhase += 0.03;
   const talking = Math.sin(mouthPhase * 3) > 0.3;
   const phrases = {
@@ -443,20 +490,20 @@ function drawSkinOverlays() {
     f1: '¡Forza\nFerrari!', base: '¡Soy el\nGordo!'
   };
   if (talking) {
-    const bx = L.cx + 55, byy = L.headTop - 30 + by;
+    const bx = cx + 55, byy = L.headTopY - 25 + by;
     ctx.fillStyle = '#fff';
     ctx.beginPath();
     ctx.moveTo(bx - 8, byy + 42);
-    ctx.lineTo(bx - 18, byy + 55);
+    ctx.lineTo(bx - 20, byy + 56);
     ctx.lineTo(bx + 2, byy + 47);
     ctx.closePath(); ctx.fill();
     roundRect(ctx, bx - 8, byy, 110, 44, 10); ctx.fill();
     ctx.fillStyle = '#333'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
-    const lines = (phrases[currentSkin] || '¡Hola!').split('\n');
+    const lines = (phrases[currentSkin] || '').split('\n');
     lines.forEach((line, i) => ctx.fillText(line, bx + 47, byy + 17 + i * 15));
   }
 
-  // Label
+  // ===== LABEL =====
   const labels = {
     toddler: 'BEBÉ SINCLAIR', monje: 'MONJE ZEN', ciclista: 'CICLISTA PRO',
     maraton: 'MARATONISTA', jurassic: 'EXPLORER', torero: 'EL TORERO',
@@ -468,24 +515,19 @@ function drawSkinOverlays() {
   ctx.fillText(labels[currentSkin] || '', W/2, H - 18);
 }
 
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y);
-  ctx.arcTo(x + w, y, x + w, y + r, r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
-  ctx.lineTo(x + r, y + h);
-  ctx.arcTo(x, y + h, x, y + h - r, r);
-  ctx.lineTo(x, y + r);
-  ctx.arcTo(x, y, x + r, y, r);
-  ctx.closePath();
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath(); c.moveTo(x + r, y); c.lineTo(x + w - r, y);
+  c.arcTo(x + w, y, x + w, y + r, r); c.lineTo(x + w, y + h - r);
+  c.arcTo(x + w, y + h, x + w - r, y + h, r); c.lineTo(x + r, y + h);
+  c.arcTo(x, y + h, x, y + h - r, r); c.lineTo(x, y + r);
+  c.arcTo(x, y, x + r, y, r); c.closePath();
 }
 
 function animate() {
   ctx.clearRect(0, 0, W, H);
   drawBackground();
   drawSceneDecor();
-  if (loaded) { drawDinoImage(); drawSkinOverlays(); }
+  if (loaded) { drawDinoImage(); drawClothing(); }
   else {
     ctx.fillStyle = '#fff'; ctx.font = '15px sans-serif'; ctx.textAlign = 'center';
     ctx.fillText('Cargando al Gordo...', W/2, H/2);
