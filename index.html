@@ -3,382 +3,749 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GORDO FURIOSO 🔥</title>
+<title>Bebé Sinclair - Skin Selector</title>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
-body { overflow:hidden; background:#1a1a2e; font-family:'Segoe UI',sans-serif; }
-canvas { display:block; cursor:none; }
-#ui { position:absolute; top:10px; left:10px; color:#fff; font-size:18px; text-shadow:1px 1px 2px #000; z-index:10; }
-#rage-bar { width:200px; height:20px; background:#333; border:2px solid #fff; border-radius:10px; overflow:hidden; margin-top:5px; }
-#rage-fill { height:100%; width:0%; background:linear-gradient(90deg,#ff4444,#ff0000); transition:width 0.3s; }
-#start-screen, #end-screen { position:absolute; top:0; left:0; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.85); z-index:20; color:#fff; text-align:center; }
-#end-screen { display:none; }
-h1 { font-size:48px; color:#ff4444; margin-bottom:10px; }
-h2 { font-size:28px; color:#ff6644; margin-bottom:20px; }
-.subtitle { font-size:20px; color:#aaa; margin-bottom:30px; }
-button { padding:15px 40px; font-size:22px; background:#ff4444; color:#fff; border:none; border-radius:10px; cursor:pointer; font-weight:bold; }
-button:hover { background:#ff6666; transform:scale(1.05); }
-.instructions { color:#888; font-size:14px; margin-top:20px; max-width:400px; }
-#score-display { font-size:24px; font-weight:bold; color:#ff4; }
-#final-score { font-size:60px; color:#ff4444; margin:20px 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: #fff;
+    overflow-x: hidden;
+  }
+  h1 {
+    margin-top: 20px;
+    font-size: 2em;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+  }
+  .subtitle {
+    font-size: 0.9em;
+    opacity: 0.7;
+    margin-bottom: 15px;
+  }
+  .stage {
+    position: relative;
+    width: 340px;
+    height: 420px;
+    margin: 10px auto;
+  }
+  canvas {
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .skin-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    max-width: 380px;
+    padding: 10px;
+  }
+  .skin-btn {
+    background: rgba(255,255,255,0.1);
+    border: 2px solid rgba(255,255,255,0.2);
+    color: #fff;
+    padding: 10px 6px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 0.75em;
+    text-align: center;
+    transition: all 0.2s;
+  }
+  .skin-btn:hover { background: rgba(255,255,255,0.25); transform: scale(1.05); }
+  .skin-btn.active { border-color: #e94560; background: rgba(233,69,96,0.3); }
+  .skin-btn .icon { font-size: 1.8em; display: block; margin-bottom: 4px; }
+  .credits { margin-top: auto; padding: 15px; opacity: 0.4; font-size: 0.7em; }
 </style>
 </head>
 <body>
-<div id="ui">
-  <div id="score-display">💰 $0</div>
-  <div>🔥 RAGE</div>
-  <div id="rage-bar"><div id="rage-fill"></div></div>
-  <div id="timer" style="margin-top:5px">⏱️ 60s</div>
+<h1>Bebé Sinclair</h1>
+<p class="subtitle">a.k.a. El Gordo Bolaños</p>
+<div class="stage">
+  <canvas id="c" width="340" height="420"></canvas>
 </div>
-
-<div id="start-screen">
-  <h1>😡 GORDO FURIOSO 😡</h1>
-  <div class="subtitle">Un hombre gordo enojado. Un restaurante. Cero paciencia.</div>
-  <button onclick="startGame()">¡DESTROZAR! 💥</button>
-  <div class="instructions">
-    🖱️ Click/Tap para destrozar objetos<br>
-    💪 Destruye todo para llenar la barra de RAGE<br>
-    🔥 RAGE llena = MODO BESTIA (destrucción doble)<br>
-    ⏱️ Tienes 60 segundos. ¡Causa el máximo daño!
-  </div>
+<div class="skin-grid">
+  <button class="skin-btn active" onclick="setSkin('toddler')"><span class="icon">👶</span>Bebé</button>
+  <button class="skin-btn" onclick="setSkin('monje')"><span class="icon">🧘</span>Monje</button>
+  <button class="skin-btn" onclick="setSkin('ciclista')"><span class="icon">🚴</span>Ciclista</button>
+  <button class="skin-btn" onclick="setSkin('maraton')"><span class="icon">🏃</span>Maratón</button>
+  <button class="skin-btn" onclick="setSkin('jurassic')"><span class="icon">🦖</span>Jurassic</button>
+  <button class="skin-btn" onclick="setSkin('torero')"><span class="icon">🇪🇸</span>Torero</button>
+  <button class="skin-btn" onclick="setSkin('f1')"><span class="icon">🏎️</span>F1 Ferrari</button>
+  <button class="skin-btn" onclick="setSkin('base')"><span class="icon">🦕</span>Desnudo</button>
 </div>
-
-<div id="end-screen">
-  <h2>🏚️ RESTAURANTE DESTRUIDO 🏚️</h2>
-  <div>Daño total:</div>
-  <div id="final-score">$0</div>
-  <div id="rating" style="font-size:24px; margin-bottom:20px"></div>
-  <button onclick="startGame()">OTRA VEZ 🔄</button>
-</div>
-
-<canvas id="game"></canvas>
+<p class="credits">Hecho con cariño para el grupo Debates</p>
 
 <script>
-const canvas = document.getElementById('game');
+const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+let currentSkin = 'toddler';
+let blink = false;
+let mouthOpen = true;
+let bounce = 0;
+let bounceDir = 1;
 
-window.addEventListener('resize', () => {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-});
+// Animation timers
+setInterval(() => { blink = true; setTimeout(() => blink = false, 150); }, 3000);
+setInterval(() => { mouthOpen = !mouthOpen; }, 800);
 
-let score = 0, rage = 0, timeLeft = 60, gameRunning = false, beastMode = false;
-let gordo = { x: 0, y: 0, targetX: 0, targetY: 0 };
-let objects = [], particles = [], shakeX = 0, shakeY = 0, shakeTime = 0;
-let combo = 0, comboTimer = 0;
-const emojis = ['🍽️','🍷','🪑','🍕','🍔','🌮','🎂','🍺','💡','🖼️','🏺','🕯️','📺','🧂','🫙','🍾'];
-const breakSounds = [];
-
-function spawnObjects() {
-  objects = [];
-  const floorY = canvas.height * 0.75;
-  // Tables
-  for (let i = 0; i < 5; i++) {
-    objects.push({
-      x: 100 + i * (canvas.width - 200) / 4,
-      y: floorY - 40,
-      w: 80, h: 50,
-      emoji: '🪑', hp: 3, maxHp: 3, value: 50, type: 'furniture'
-    });
-  }
-  // Stuff on walls and shelves
-  for (let i = 0; i < 20; i++) {
-    const emoji = emojis[Math.floor(Math.random() * emojis.length)];
-    objects.push({
-      x: 50 + Math.random() * (canvas.width - 100),
-      y: 80 + Math.random() * (canvas.height - 200),
-      w: 45, h: 45,
-      emoji, hp: 1 + Math.floor(Math.random() * 2), maxHp: 1 + Math.floor(Math.random() * 2),
-      value: 20 + Math.floor(Math.random() * 80), type: 'item',
-      bobOffset: Math.random() * Math.PI * 2
-    });
-  }
-  // Big chandelier
-  objects.push({
-    x: canvas.width / 2, y: 100, w: 80, h: 80,
-    emoji: '💡', hp: 5, maxHp: 5, value: 200, type: 'chandelier'
-  });
+function setSkin(s) {
+  currentSkin = s;
+  document.querySelectorAll('.skin-btn').forEach(b => b.classList.remove('active'));
+  event.currentTarget.classList.add('active');
 }
 
-function spawnParticles(x, y, emoji, count) {
-  for (let i = 0; i < count; i++) {
-    particles.push({
-      x, y, vx: (Math.random() - 0.5) * 12, vy: -Math.random() * 8 - 2,
-      life: 1, emoji: Math.random() > 0.4 ? '💥' : emoji,
-      size: 15 + Math.random() * 20, rot: Math.random() * Math.PI * 2,
-      rotV: (Math.random() - 0.5) * 0.3
-    });
-  }
-}
+function drawDino() {
+  const W = 340, H = 420;
+  ctx.clearRect(0, 0, W, H);
 
-function spawnScorePopup(x, y, value) {
-  particles.push({
-    x, y, vx: 0, vy: -2, life: 1,
-    text: `+$${value}`, size: 24 + (combo > 1 ? combo * 4 : 0),
-    isText: true, color: beastMode ? '#ff0' : '#0f0'
-  });
-  if (combo > 1) {
-    particles.push({
-      x, y: y + 25, vx: 0, vy: -1.5, life: 1,
-      text: `x${combo} COMBO!`, size: 18, isText: true, color: '#f84'
-    });
-  }
-}
+  // Background based on skin
+  const bgs = {
+    toddler: ['#ffe6f0','#ffd6e7'],
+    monje: ['#2d1b00','#5c3a1e'],
+    ciclista: ['#e0f7fa','#80deea'],
+    maraton: ['#fff3e0','#ffcc80'],
+    jurassic: ['#1b5e20','#388e3c'],
+    torero: ['#b71c1c','#e53935'],
+    f1: ['#d32f2f','#ff6659'],
+    base: ['#a5d6a7','#66bb6a']
+  };
+  const bg = bgs[currentSkin] || bgs.base;
+  const grd = ctx.createLinearGradient(0, 0, 0, H);
+  grd.addColorStop(0, bg[0]);
+  grd.addColorStop(1, bg[1]);
+  ctx.fillStyle = grd;
+  ctx.beginPath();
+  ctx.roundRect(0, 0, W, H, 16);
+  ctx.fill();
 
-function shake(intensity) {
-  shakeTime = 10;
-  shakeX = (Math.random() - 0.5) * intensity;
-  shakeY = (Math.random() - 0.5) * intensity;
-}
+  // Bounce animation
+  bounce += 0.6 * bounceDir;
+  if (bounce > 5 || bounce < -5) bounceDir *= -1;
+  const by = bounce;
 
-function handleClick(cx, cy) {
-  if (!gameRunning) return;
-  let hit = false;
-  for (let i = objects.length - 1; i >= 0; i--) {
-    const o = objects[i];
-    if (cx > o.x - o.w/2 && cx < o.x + o.w/2 && cy > o.y - o.h/2 && cy < o.y + o.h/2) {
-      o.hp -= beastMode ? 2 : 1;
-      combo++; comboTimer = 60;
-      if (o.hp <= 0) {
-        const val = o.value * (beastMode ? 2 : 1) * Math.max(1, combo);
-        score += val;
-        rage = Math.min(100, rage + 8);
-        spawnParticles(o.x, o.y, o.emoji, 8);
-        spawnScorePopup(o.x, o.y, val);
-        shake(beastMode ? 20 : 10);
-        objects.splice(i, 1);
-        // Respawn after delay
-        setTimeout(() => {
-          if (gameRunning) {
-            const emoji = emojis[Math.floor(Math.random() * emojis.length)];
-            objects.push({
-              x: 50 + Math.random() * (canvas.width - 100),
-              y: 80 + Math.random() * (canvas.height - 200),
-              w: 45, h: 45, emoji,
-              hp: 1 + Math.floor(Math.random() * 3),
-              maxHp: 1 + Math.floor(Math.random() * 3),
-              value: 30 + Math.floor(Math.random() * 100),
-              type: 'item', bobOffset: Math.random() * Math.PI * 2
-            });
-          }
-        }, 2000);
-      } else {
-        spawnParticles(o.x, o.y, '💢', 3);
-        shake(5);
-      }
-      hit = true;
-      break;
+  const cx2 = W / 2;
+  const baseY = 310 + by;
+
+  // --- SKIN-SPECIFIC BACKGROUNDS ---
+  if (currentSkin === 'jurassic') {
+    // Trees
+    ctx.fillStyle = '#2e7d32';
+    for (let i = 0; i < 5; i++) {
+      const tx = i * 80 + 20;
+      ctx.fillRect(tx, 80, 8, 60);
+      ctx.beginPath();
+      ctx.arc(tx + 4, 75, 25, 0, Math.PI * 2);
+      ctx.fill();
     }
+    // Fence
+    ctx.strokeStyle = '#5d4037';
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 8; i++) {
+      const fx = i * 48 + 10;
+      ctx.strokeRect(fx, 340, 6, 50);
+    }
+    ctx.beginPath();
+    ctx.moveTo(0, 355);
+    ctx.lineTo(W, 355);
+    ctx.moveTo(0, 375);
+    ctx.lineTo(W, 375);
+    ctx.stroke();
   }
-  if (!hit) {
-    spawnParticles(cx, cy, '💨', 2);
-    combo = 0;
+
+  if (currentSkin === 'f1') {
+    // Track lines
+    ctx.fillStyle = '#424242';
+    ctx.fillRect(0, 360, W, 60);
+    ctx.setLineDash([20, 15]);
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, 390);
+    ctx.lineTo(W, 390);
+    ctx.stroke();
+    ctx.setLineDash([]);
   }
-}
 
-canvas.addEventListener('click', e => handleClick(e.clientX, e.clientY));
-canvas.addEventListener('touchstart', e => {
-  e.preventDefault();
-  const t = e.touches[0];
-  handleClick(t.clientX, t.clientY);
-});
-canvas.addEventListener('mousemove', e => { gordo.targetX = e.clientX; gordo.targetY = e.clientY; });
-canvas.addEventListener('touchmove', e => {
-  const t = e.touches[0];
-  gordo.targetX = t.clientX; gordo.targetY = t.clientY;
-});
-
-function drawRestaurant() {
-  // Floor
-  ctx.fillStyle = '#3d2b1f';
-  ctx.fillRect(0, canvas.height * 0.75, canvas.width, canvas.height * 0.25);
-  // Tiles
-  for (let x = 0; x < canvas.width; x += 60) {
-    ctx.strokeStyle = '#2a1f15';
-    ctx.beginPath(); ctx.moveTo(x, canvas.height * 0.75); ctx.lineTo(x, canvas.height); ctx.stroke();
+  if (currentSkin === 'torero') {
+    // Arena sand floor
+    ctx.fillStyle = '#d4a056';
+    ctx.fillRect(0, 350, W, 70);
+    ctx.fillStyle = '#c49046';
+    ctx.beginPath();
+    ctx.ellipse(cx2, 370, 150, 30, 0, 0, Math.PI * 2);
+    ctx.fill();
   }
-  // Wall
-  ctx.fillStyle = '#8b4513';
-  const wallGrad = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.75);
-  wallGrad.addColorStop(0, '#654321');
-  wallGrad.addColorStop(1, '#8b6914');
-  ctx.fillStyle = wallGrad;
-  ctx.fillRect(0, 0, canvas.width, canvas.height * 0.75);
-  // Wainscoting
-  ctx.fillStyle = '#5c3a1e';
-  ctx.fillRect(0, canvas.height * 0.55, canvas.width, canvas.height * 0.2);
-  // Sign
-  ctx.fillStyle = '#222';
-  ctx.fillRect(canvas.width/2 - 150, 15, 300, 45);
-  ctx.fillStyle = '#ff4';
-  ctx.font = 'bold 24px serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('🍕 RESTAURANTE CASTORS 🍕', canvas.width/2, 45);
-}
 
-function drawGordo() {
-  gordo.x += (gordo.targetX - gordo.x) * 0.15;
-  gordo.y += (gordo.targetY - gordo.y) * 0.15;
-  const size = beastMode ? 60 : 50;
-  ctx.font = `${size}px serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  // Shadow
-  ctx.globalAlpha = 0.3;
-  ctx.fillText('⚫', gordo.x + 3, gordo.y + 3);
-  ctx.globalAlpha = 1;
-  // Gordo
-  ctx.fillText(beastMode ? '🤬' : '😡', gordo.x, gordo.y);
-  // Fists
-  const t = Date.now() / 100;
-  ctx.font = '30px serif';
-  ctx.fillText('👊', gordo.x - 35 + Math.sin(t) * 5, gordo.y + Math.cos(t * 1.3) * 5);
-  ctx.fillText('👊', gordo.x + 35 + Math.cos(t) * 5, gordo.y + Math.sin(t * 1.3) * 5);
-  if (beastMode) {
-    ctx.font = '20px serif';
-    ctx.fillText('🔥', gordo.x - 20, gordo.y - 35);
-    ctx.fillText('🔥', gordo.x + 20, gordo.y - 35);
+  // --- FEET / SHOES ---
+  ctx.fillStyle = currentSkin === 'maraton' ? '#1565c0' :
+                  currentSkin === 'ciclista' ? '#212121' :
+                  currentSkin === 'f1' ? '#d32f2f' : '#4a7c3f';
+  // Left foot
+  ctx.beginPath();
+  ctx.ellipse(cx2 - 30, baseY + 55, 22, 12, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+  // Right foot
+  ctx.beginPath();
+  ctx.ellipse(cx2 + 30, baseY + 55, 22, 12, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- LEGS ---
+  ctx.fillStyle = '#6abf5e';
+  ctx.fillRect(cx2 - 35, baseY + 20, 22, 40);
+  ctx.fillRect(cx2 + 13, baseY + 20, 22, 40);
+
+  // --- TAIL ---
+  ctx.fillStyle = '#6abf5e';
+  ctx.beginPath();
+  ctx.moveTo(cx2 + 50, baseY);
+  ctx.quadraticCurveTo(cx2 + 100, baseY + 10, cx2 + 90, baseY - 20 + Math.sin(Date.now()/300)*5);
+  ctx.quadraticCurveTo(cx2 + 80, baseY + 5, cx2 + 50, baseY + 15);
+  ctx.fill();
+  // Tail spikes
+  ctx.fillStyle = '#4a9e3f';
+  for (let i = 0; i < 3; i++) {
+    const tx = cx2 + 60 + i * 12;
+    const ty = baseY - 5 + i * 2 + Math.sin(Date.now()/300)*3;
+    ctx.beginPath();
+    ctx.moveTo(tx - 4, ty + 5);
+    ctx.lineTo(tx, ty - 6);
+    ctx.lineTo(tx + 4, ty + 5);
+    ctx.fill();
   }
-}
 
-function update() {
-  if (comboTimer > 0) comboTimer--;
-  else combo = 0;
-  if (shakeTime > 0) {
-    shakeTime--;
-    shakeX *= 0.8; shakeY *= 0.8;
-  } else { shakeX = 0; shakeY = 0; }
-  beastMode = rage >= 100;
-  if (beastMode) rage = Math.max(0, rage - 0.15);
-  // Particles
-  for (let i = particles.length - 1; i >= 0; i--) {
-    const p = particles[i];
-    p.x += p.vx; p.y += p.vy;
-    if (!p.isText) { p.vy += 0.3; p.rot += p.rotV || 0; }
-    p.life -= 0.02;
-    if (p.life <= 0) particles.splice(i, 1);
+  // --- BODY ---
+  ctx.fillStyle = '#6abf5e';
+  ctx.beginPath();
+  ctx.ellipse(cx2, baseY - 10, 60, 55, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Belly
+  ctx.fillStyle = '#b8e6a3';
+  ctx.beginPath();
+  ctx.ellipse(cx2, baseY, 40, 38, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- CLOTHING PER SKIN ---
+  if (currentSkin === 'toddler') {
+    // Diaper
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(cx2, baseY + 20, 38, 18, 0, 0, Math.PI);
+    ctx.fill();
+    ctx.fillStyle = '#87CEEB';
+    ctx.fillRect(cx2 - 8, baseY + 8, 16, 6);
+    // Bib
+    ctx.fillStyle = '#FFD700';
+    ctx.beginPath();
+    ctx.moveTo(cx2 - 20, baseY - 40);
+    ctx.lineTo(cx2 + 20, baseY - 40);
+    ctx.lineTo(cx2 + 15, baseY - 15);
+    ctx.lineTo(cx2 - 15, baseY - 15);
+    ctx.fill();
+    ctx.fillStyle = '#e53935';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('NOT THE', cx2, baseY - 30);
+    ctx.fillText('MAMA!', cx2, baseY - 19);
   }
-}
 
-function draw() {
+  if (currentSkin === 'monje') {
+    // Brown robe
+    ctx.fillStyle = '#5d4037';
+    ctx.beginPath();
+    ctx.moveTo(cx2 - 50, baseY - 50);
+    ctx.lineTo(cx2 + 50, baseY - 50);
+    ctx.lineTo(cx2 + 45, baseY + 40);
+    ctx.lineTo(cx2 - 45, baseY + 40);
+    ctx.fill();
+    // Belt rope
+    ctx.strokeStyle = '#d7ccc8';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(cx2 - 40, baseY);
+    ctx.lineTo(cx2 + 40, baseY);
+    ctx.stroke();
+    // Rope hang
+    ctx.beginPath();
+    ctx.moveTo(cx2 + 20, baseY);
+    ctx.lineTo(cx2 + 15, baseY + 25);
+    ctx.stroke();
+  }
+
+  if (currentSkin === 'ciclista') {
+    // Jersey
+    ctx.fillStyle = '#fdd835';
+    ctx.beginPath();
+    ctx.moveTo(cx2 - 45, baseY - 45);
+    ctx.lineTo(cx2 + 45, baseY - 45);
+    ctx.lineTo(cx2 + 40, baseY + 5);
+    ctx.lineTo(cx2 - 40, baseY + 5);
+    ctx.fill();
+    // Jersey stripes
+    ctx.fillStyle = '#f57f17';
+    ctx.fillRect(cx2 - 40, baseY - 30, 80, 6);
+    ctx.fillRect(cx2 - 40, baseY - 15, 80, 6);
+    // Shorts
+    ctx.fillStyle = '#212121';
+    ctx.fillRect(cx2 - 40, baseY + 5, 80, 25);
+    // Number
+    ctx.fillStyle = '#212121';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('69', cx2, baseY - 33);
+  }
+
+  if (currentSkin === 'maraton') {
+    // Singlet
+    ctx.fillStyle = '#e53935';
+    ctx.beginPath();
+    ctx.moveTo(cx2 - 35, baseY - 45);
+    ctx.lineTo(cx2 + 35, baseY - 45);
+    ctx.lineTo(cx2 + 32, baseY + 5);
+    ctx.lineTo(cx2 - 32, baseY + 5);
+    ctx.fill();
+    // Race number
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(cx2 - 20, baseY - 35, 40, 25);
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('502', cx2, baseY - 17);
+    // Shorts
+    ctx.fillStyle = '#1a237e';
+    ctx.fillRect(cx2 - 35, baseY + 5, 70, 22);
+    // Sweatband
+    ctx.fillStyle = '#e53935';
+    ctx.fillRect(cx2 - 40, baseY - 100, 80, 6);
+  }
+
+  if (currentSkin === 'jurassic') {
+    // Khaki vest
+    ctx.fillStyle = '#a1887f';
+    ctx.beginPath();
+    ctx.moveTo(cx2 - 48, baseY - 45);
+    ctx.lineTo(cx2 + 48, baseY - 45);
+    ctx.lineTo(cx2 + 42, baseY + 15);
+    ctx.lineTo(cx2 - 42, baseY + 15);
+    ctx.fill();
+    // Pockets
+    ctx.strokeStyle = '#795548';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(cx2 - 32, baseY - 20, 20, 15);
+    ctx.strokeRect(cx2 + 12, baseY - 20, 20, 15);
+    // Khaki shorts
+    ctx.fillStyle = '#bcaaa4';
+    ctx.fillRect(cx2 - 38, baseY + 15, 76, 18);
+    // InGen badge
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(cx2 + 15, baseY - 42, 25, 12);
+    ctx.fillStyle = '#e53935';
+    ctx.font = 'bold 7px sans-serif';
+    ctx.fillText('InGen', cx2 + 27, baseY - 33);
+  }
+
+  if (currentSkin === 'torero') {
+    // Traje de luces jacket
+    ctx.fillStyle = '#b71c1c';
+    ctx.beginPath();
+    ctx.moveTo(cx2 - 48, baseY - 48);
+    ctx.lineTo(cx2 + 48, baseY - 48);
+    ctx.lineTo(cx2 + 40, baseY + 10);
+    ctx.lineTo(cx2 - 40, baseY + 10);
+    ctx.fill();
+    // Gold trim
+    ctx.strokeStyle = '#FFD700';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(cx2 - 46, baseY - 46, 92, 54);
+    // Epaulettes
+    ctx.fillStyle = '#FFD700';
+    ctx.beginPath();
+    ctx.arc(cx2 - 46, baseY - 40, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx2 + 46, baseY - 40, 8, 0, Math.PI * 2);
+    ctx.fill();
+    // Tight pants
+    ctx.fillStyle = '#880e4f';
+    ctx.fillRect(cx2 - 35, baseY + 10, 22, 35);
+    ctx.fillRect(cx2 + 13, baseY + 10, 22, 35);
+    // Gold side stripes
+    ctx.fillStyle = '#FFD700';
+    ctx.fillRect(cx2 - 35, baseY + 10, 3, 35);
+    ctx.fillRect(cx2 + 32, baseY + 10, 3, 35);
+    // Cape
+    ctx.fillStyle = 'rgba(233, 30, 99, 0.7)';
+    ctx.beginPath();
+    ctx.moveTo(cx2 + 50, baseY - 30);
+    ctx.quadraticCurveTo(cx2 + 120, baseY + 20 + Math.sin(Date.now()/400)*10, cx2 + 80, baseY + 60);
+    ctx.quadraticCurveTo(cx2 + 60, baseY + 50, cx2 + 50, baseY + 10);
+    ctx.fill();
+    // Cape yellow lining
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.5)';
+    ctx.beginPath();
+    ctx.moveTo(cx2 + 55, baseY - 20);
+    ctx.quadraticCurveTo(cx2 + 110, baseY + 20 + Math.sin(Date.now()/400)*8, cx2 + 75, baseY + 50);
+    ctx.quadraticCurveTo(cx2 + 60, baseY + 40, cx2 + 55, baseY + 10);
+    ctx.fill();
+  }
+
+  if (currentSkin === 'f1') {
+    // Race suit
+    ctx.fillStyle = '#d32f2f';
+    ctx.beginPath();
+    ctx.moveTo(cx2 - 48, baseY - 48);
+    ctx.lineTo(cx2 + 48, baseY - 48);
+    ctx.lineTo(cx2 + 42, baseY + 35);
+    ctx.lineTo(cx2 - 42, baseY + 35);
+    ctx.fill();
+    // White stripe
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(cx2 - 5, baseY - 48, 10, 83);
+    // Ferrari logo area
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Ferrari', cx2, baseY - 35);
+    // Sponsors
+    ctx.fillStyle = '#fff';
+    ctx.font = '7px sans-serif';
+    ctx.fillText('Shell', cx2 - 25, baseY - 10);
+    ctx.fillText('UPS', cx2 + 25, baseY - 10);
+    // Prancing horse
+    ctx.font = '18px sans-serif';
+    ctx.fillText('🐴', cx2, baseY + 5);
+  }
+
+  // --- ARMS ---
+  ctx.fillStyle = '#6abf5e';
+  // Left arm
   ctx.save();
-  ctx.translate(shakeX, shakeY);
-  ctx.clearRect(-10, -10, canvas.width + 20, canvas.height + 20);
-  
-  if (beastMode) {
-    ctx.fillStyle = `rgba(255,0,0,${0.1 + Math.sin(Date.now()/100)*0.05})`;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.translate(cx2 - 55, baseY - 25);
+  ctx.rotate(-0.3 + Math.sin(Date.now()/500) * 0.1);
+  ctx.fillRect(-8, 0, 16, 40);
+  // Left hand
+  ctx.fillStyle = '#5aaf4e';
+  ctx.beginPath();
+  ctx.arc(0, 42, 10, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Hold item per skin
+  if (currentSkin === 'monje') {
+    ctx.fillStyle = '#8d6e63';
+    ctx.fillRect(-2, 42, 4, 35);
+    ctx.fillStyle = '#e0c068';
+    ctx.beginPath();
+    ctx.arc(0, 38, 8, 0, Math.PI * 2);
+    ctx.fill();
   }
-  
-  drawRestaurant();
-  
-  // Objects
-  const t = Date.now() / 500;
-  objects.forEach(o => {
-    const bob = o.bobOffset ? Math.sin(t + o.bobOffset) * 3 : 0;
-    const dmg = 1 - o.hp / o.maxHp;
-    ctx.globalAlpha = 0.5 + 0.5 * (o.hp / o.maxHp);
-    ctx.font = `${o.w}px serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    if (dmg > 0) {
-      ctx.save();
-      ctx.translate(o.x, o.y + bob);
-      ctx.rotate(dmg * 0.2 * Math.sin(Date.now()/200));
-      ctx.fillText(o.emoji, 0, 0);
-      ctx.restore();
-    } else {
-      ctx.fillText(o.emoji, o.x, o.y + bob);
-    }
-    ctx.globalAlpha = 1;
-    // HP bar
-    if (o.hp < o.maxHp && o.hp > 0) {
-      ctx.fillStyle = '#500';
-      ctx.fillRect(o.x - 20, o.y - o.h/2 - 8, 40, 5);
-      ctx.fillStyle = '#f44';
-      ctx.fillRect(o.x - 20, o.y - o.h/2 - 8, 40 * (o.hp/o.maxHp), 5);
-    }
-  });
-  
-  // Particles
-  particles.forEach(p => {
-    ctx.globalAlpha = p.life;
-    if (p.isText) {
-      ctx.font = `bold ${p.size}px sans-serif`;
-      ctx.fillStyle = p.color;
-      ctx.textAlign = 'center';
-      ctx.fillText(p.text, p.x, p.y);
-    } else {
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rot || 0);
-      ctx.font = `${p.size}px serif`;
-      ctx.textAlign = 'center';
-      ctx.fillText(p.emoji, 0, 0);
-      ctx.restore();
-    }
-    ctx.globalAlpha = 1;
-  });
-  
-  drawGordo();
-  
-  // Beast mode overlay text
-  if (beastMode) {
-    ctx.font = 'bold 36px sans-serif';
-    ctx.fillStyle = `rgba(255,${Math.floor(Math.sin(Date.now()/100)*50+50)},0,0.8)`;
-    ctx.textAlign = 'center';
-    ctx.fillText('🔥 MODO BESTIA 🔥', canvas.width/2, canvas.height - 40);
-  }
-  
   ctx.restore();
-}
 
-function gameLoop() {
-  if (!gameRunning) return;
-  update();
-  draw();
-  document.getElementById('score-display').textContent = `💰 $${score.toLocaleString()}`;
-  document.getElementById('rage-fill').style.width = rage + '%';
-  document.getElementById('rage-fill').style.background = beastMode ? 
-    'linear-gradient(90deg,#ff0,#f80)' : 'linear-gradient(90deg,#f44,#f00)';
-  requestAnimationFrame(gameLoop);
-}
+  ctx.fillStyle = '#6abf5e';
+  // Right arm
+  ctx.save();
+  ctx.translate(cx2 + 55, baseY - 25);
+  ctx.rotate(0.3 - Math.sin(Date.now()/500) * 0.1);
+  ctx.fillRect(-8, 0, 16, 40);
+  ctx.fillStyle = '#5aaf4e';
+  ctx.beginPath();
+  ctx.arc(0, 42, 10, 0, Math.PI * 2);
+  ctx.fill();
 
-function startGame() {
-  document.getElementById('start-screen').style.display = 'none';
-  document.getElementById('end-screen').style.display = 'none';
-  score = 0; rage = 0; timeLeft = 60; combo = 0; particles = [];
-  beastMode = false; gameRunning = true;
-  gordo = { x: canvas.width/2, y: canvas.height/2, targetX: canvas.width/2, targetY: canvas.height/2 };
-  spawnObjects();
-  gameLoop();
-  const timer = setInterval(() => {
-    if (!gameRunning) { clearInterval(timer); return; }
-    timeLeft--;
-    document.getElementById('timer').textContent = `⏱️ ${timeLeft}s`;
-    if (timeLeft <= 10) document.getElementById('timer').style.color = '#f44';
-    else document.getElementById('timer').style.color = '#fff';
-    if (timeLeft <= 0) {
-      gameRunning = false;
-      clearInterval(timer);
-      endGame();
+  if (currentSkin === 'toddler') {
+    // Pan (sartén)
+    ctx.fillStyle = '#555';
+    ctx.fillRect(-2, 42, 4, 20);
+    ctx.fillStyle = '#777';
+    ctx.beginPath();
+    ctx.arc(0, 65, 12, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (currentSkin === 'maraton') {
+    // Water bottle
+    ctx.fillStyle = '#29b6f6';
+    ctx.fillRect(-5, 42, 10, 18);
+    ctx.fillStyle = '#0288d1';
+    ctx.fillRect(-3, 38, 6, 6);
+  }
+  ctx.restore();
+
+  // --- HEAD ---
+  ctx.fillStyle = '#6abf5e';
+  ctx.beginPath();
+  ctx.ellipse(cx2, baseY - 80, 45, 42, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Head ridges / spikes
+  ctx.fillStyle = '#4a9e3f';
+  const spikes = [[-20, -118], [-7, -122], [6, -124], [19, -120]];
+  for (const [sx, sy] of spikes) {
+    ctx.beginPath();
+    ctx.moveTo(cx2 + sx - 6, baseY + sy + 30);
+    ctx.lineTo(cx2 + sx, baseY + sy + 18);
+    ctx.lineTo(cx2 + sx + 6, baseY + sy + 30);
+    ctx.fill();
+  }
+
+  // --- FACE ---
+  // Eyes
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(cx2 - 18, baseY - 88, 12, blink ? 2 : 11, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx2 + 18, baseY - 88, 12, blink ? 2 : 11, 0, 0, Math.PI * 2);
+  ctx.fill();
+  if (!blink) {
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.arc(cx2 - 16, baseY - 87, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx2 + 20, baseY - 87, 5, 0, Math.PI * 2);
+    ctx.fill();
+    // Eye shine
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(cx2 - 14, baseY - 90, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx2 + 22, baseY - 90, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Snout / mouth area
+  ctx.fillStyle = '#b8e6a3';
+  ctx.beginPath();
+  ctx.ellipse(cx2, baseY - 68, 25, 15, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Mouth
+  if (mouthOpen) {
+    ctx.fillStyle = '#c62828';
+    ctx.beginPath();
+    ctx.ellipse(cx2, baseY - 63, 14, 9, 0, 0, Math.PI);
+    ctx.fill();
+    // Teeth
+    ctx.fillStyle = '#fff';
+    for (let i = -2; i <= 2; i++) {
+      ctx.fillRect(cx2 + i * 6 - 2, baseY - 63, 4, 4);
     }
-  }, 1000);
+  } else {
+    ctx.strokeStyle = '#2e7d32';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx2, baseY - 68, 14, 0.1, Math.PI - 0.1);
+    ctx.stroke();
+  }
+
+  // Nostrils
+  ctx.fillStyle = '#3e8e35';
+  ctx.beginPath();
+  ctx.arc(cx2 - 7, baseY - 73, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx2 + 7, baseY - 73, 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Cheeks (blush)
+  ctx.fillStyle = 'rgba(255, 150, 150, 0.3)';
+  ctx.beginPath();
+  ctx.ellipse(cx2 - 33, baseY - 75, 10, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx2 + 33, baseY - 75, 10, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- HEADGEAR PER SKIN ---
+  if (currentSkin === 'monje') {
+    // Bald head (tonsure already green)
+    ctx.fillStyle = '#6abf5e';
+    ctx.beginPath();
+    ctx.arc(cx2, baseY - 105, 20, Math.PI, 0);
+    ctx.fill();
+    // Hood
+    ctx.fillStyle = '#5d4037';
+    ctx.beginPath();
+    ctx.moveTo(cx2 - 48, baseY - 70);
+    ctx.quadraticCurveTo(cx2, baseY - 140, cx2 + 48, baseY - 70);
+    ctx.lineTo(cx2 + 50, baseY - 60);
+    ctx.quadraticCurveTo(cx2, baseY - 125, cx2 - 50, baseY - 60);
+    ctx.fill();
+  }
+
+  if (currentSkin === 'ciclista') {
+    // Helmet
+    ctx.fillStyle = '#263238';
+    ctx.beginPath();
+    ctx.ellipse(cx2, baseY - 100, 48, 28, 0, Math.PI, 0);
+    ctx.fill();
+    // Vents
+    ctx.fillStyle = '#37474f';
+    for (let i = -2; i <= 2; i++) {
+      ctx.fillRect(cx2 + i * 12 - 3, baseY - 120, 6, 12);
+    }
+    // Visor
+    ctx.fillStyle = '#00bcd4';
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.ellipse(cx2, baseY - 95, 50, 8, 0, 0, Math.PI);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  if (currentSkin === 'maraton') {
+    // Headband
+    ctx.fillStyle = '#e53935';
+    ctx.fillRect(cx2 - 44, baseY - 105, 88, 8);
+    // Sweat drops
+    ctx.fillStyle = '#29b6f6';
+    ctx.globalAlpha = 0.6;
+    const sweatY = (Date.now() / 10) % 40;
+    ctx.beginPath();
+    ctx.arc(cx2 - 40, baseY - 90 + sweatY, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx2 + 42, baseY - 85 + (sweatY * 0.7), 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  if (currentSkin === 'jurassic') {
+    // Safari hat
+    ctx.fillStyle = '#8d6e63';
+    ctx.beginPath();
+    ctx.ellipse(cx2, baseY - 105, 55, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#795548';
+    ctx.beginPath();
+    ctx.ellipse(cx2, baseY - 112, 35, 18, 0, Math.PI, 0);
+    ctx.fill();
+    // Hat band
+    ctx.fillStyle = '#4e342e';
+    ctx.fillRect(cx2 - 35, baseY - 110, 70, 4);
+  }
+
+  if (currentSkin === 'torero') {
+    // Montera hat
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.ellipse(cx2, baseY - 108, 42, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx2, baseY - 115, 30, 20, 0, Math.PI, 0);
+    ctx.fill();
+    // Pompoms
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.arc(cx2 - 30, baseY - 100, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx2 + 30, baseY - 100, 8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  if (currentSkin === 'f1') {
+    // Helmet
+    ctx.fillStyle = '#d32f2f';
+    ctx.beginPath();
+    ctx.ellipse(cx2, baseY - 95, 48, 35, 0, Math.PI, 0);
+    ctx.fill();
+    // Visor
+    ctx.fillStyle = '#212121';
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    ctx.ellipse(cx2, baseY - 90, 42, 12, 0, 0, Math.PI * 0.9);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    // Number
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('16', cx2, baseY - 108);
+    // Ferrari logo
+    ctx.font = '10px sans-serif';
+    ctx.fillText('SF', cx2, baseY - 120);
+  }
+
+  if (currentSkin === 'toddler') {
+    // Little tuft of hair
+    ctx.fillStyle = '#4a9e3f';
+    ctx.beginPath();
+    ctx.moveTo(cx2 - 5, baseY - 120);
+    ctx.quadraticCurveTo(cx2, baseY - 140, cx2 + 5, baseY - 120);
+    ctx.fill();
+  }
+
+  // --- SPEECH BUBBLE ---
+  const phrases = {
+    toddler: '¡No soy\nel mamá!',
+    monje: 'Om...\nnamaste',
+    ciclista: '¡Allez\nallez!',
+    maraton: '¡Ya casi\nllego!',
+    jurassic: '¡Clever\ngirl!',
+    torero: '¡Olé!\n¡Torero!',
+    f1: '¡Forza\nFerrari!',
+    base: '¡Soy el\nGordo!'
+  };
+  if (mouthOpen) {
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.moveTo(cx2 + 50, baseY - 110);
+    ctx.lineTo(cx2 + 60, baseY - 90);
+    ctx.lineTo(cx2 + 50, baseY - 95);
+    ctx.fill();
+    roundRect(ctx, cx2 + 50, baseY - 155, 110, 48, 10);
+    ctx.fill();
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    const lines = (phrases[currentSkin] || '¡Hola!').split('\n');
+    lines.forEach((line, i) => {
+      ctx.fillText(line, cx2 + 105, baseY - 138 + i * 16);
+    });
+  }
+
+  // Skin label
+  const labels = {
+    toddler: 'BEBÉ SINCLAIR',
+    monje: 'MONJE ZEN',
+    ciclista: 'CICLISTA PRO',
+    maraton: 'MARATONISTA',
+    jurassic: 'EXPLORER',
+    torero: 'EL TORERO',
+    f1: 'SCUDERIA GORDO',
+    base: 'AL NATURAL'
+  };
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  roundRect(ctx, cx2 - 70, H - 40, 140, 28, 8);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(labels[currentSkin] || '', cx2, H - 22);
 }
 
-function endGame() {
-  document.getElementById('end-screen').style.display = 'flex';
-  document.getElementById('final-score').textContent = `$${score.toLocaleString()}`;
-  let rating = '';
-  if (score < 1000) rating = '😤 "Ni cosquillas le hizo al restaurante"';
-  else if (score < 5000) rating = '😡 "El mesero se asustó"';
-  else if (score < 15000) rating = '🤬 "Llamaron a la policía"';
-  else if (score < 30000) rating = '💀 "Restaurante en ruinas"';
-  else rating = '☠️ "CASTORS CERRÓ PARA SIEMPRE"';
-  document.getElementById('rating').textContent = rating;
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
 }
+
+function animate() {
+  drawDino();
+  requestAnimationFrame(animate);
+}
+animate();
 </script>
 </body>
 </html>
