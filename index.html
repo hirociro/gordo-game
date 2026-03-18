@@ -50,7 +50,6 @@
   .skin-btn.active { border-color: #e94560; background: rgba(233,69,96,0.3); }
   .skin-btn .icon { font-size: 1.8em; display: block; margin-bottom: 4px; }
   .credits { margin-top: auto; padding: 12px; opacity: 0.4; font-size: 0.7em; }
-  .loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 1.2em; }
 </style>
 </head>
 <body>
@@ -58,7 +57,6 @@
 <p class="subtitle">a.k.a. El Gordo Bolaños</p>
 <div class="stage">
   <canvas id="c" width="340" height="450"></canvas>
-  <div class="loading" id="loader">Cargando...</div>
 </div>
 <div class="skin-grid">
   <button class="skin-btn active" onclick="setSkin('toddler')"><span class="icon">👶</span>Bebé</button>
@@ -82,18 +80,12 @@ let bounce = 0, bounceDir = 1;
 let dinoImg = null;
 let loaded = false;
 
-// Load baby sinclair image
 const img = new Image();
 img.crossOrigin = 'anonymous';
-img.onload = () => {
-  dinoImg = img;
-  loaded = true;
-  document.getElementById('loader').style.display = 'none';
-};
+img.onload = () => { dinoImg = img; loaded = true; };
 img.onerror = () => {
-  // fallback: try without crossOrigin
   const img2 = new Image();
-  img2.onload = () => { dinoImg = img2; loaded = true; document.getElementById('loader').style.display = 'none'; };
+  img2.onload = () => { dinoImg = img2; loaded = true; };
   img2.src = img.src;
 };
 img.src = 'https://i.pinimg.com/736x/83/19/bf/8319bf3730ce8c53879cff89943eef90.jpg';
@@ -104,387 +96,364 @@ function setSkin(s) {
   event.currentTarget.classList.add('active');
 }
 
-// Baby sinclair proportions in the image (approximate):
-// The image is roughly 736x736. Baby takes up most of frame.
-// Head center ~50%, ~30% from top. Body center ~50%, ~65%.
-// We scale to fit canvas.
+/*
+  Image is 736x736. Scaled to 340 wide → scale=0.462, drawH=340, offsetY=45.
+  Baby Sinclair body landmarks (measured from the actual image):
+    Head top:      ~15% img → canvas y ≈ 96
+    Eye level:     ~28% img → canvas y ≈ 140
+    Chin:          ~38% img → canvas y ≈ 174
+    Shoulders:     ~43% img → canvas y ≈ 190
+    Mid-chest:     ~50% img → canvas y ≈ 215
+    Belly/waist:   ~58% img → canvas y ≈ 242
+    Diaper top:    ~63% img → canvas y ≈ 258
+    Crotch:        ~70% img → canvas y ≈ 283
+    Feet:          ~88% img → canvas y ≈ 344
 
-// Drawing coordinates (relative to our canvas)
-// We'll draw the image centered, scaled to fill width
-const IMG_W = 736, IMG_H = 736;
+    Body center X: ~50% img → canvas x ≈ 170
+    Torso left:    ~37% img → canvas x ≈ 126
+    Torso right:   ~63% img → canvas x ≈ 214
+    Torso width:   ~88px (±44 from center)
+*/
 
-function getDrawParams() {
-  const scale = W / IMG_W;
-  const drawW = W;
-  const drawH = IMG_H * scale;
-  const offsetY = (H - drawH) / 2 - 10;
-  return { scale, drawW, drawH, offsetY };
-}
-
-// Character landmarks (in canvas coords, approximate)
-function getLandmarks() {
-  const { scale, offsetY } = getDrawParams();
-  return {
-    headCX: W * 0.48,
-    headTopY: offsetY + 50 * scale,
-    headCY: offsetY + 190 * scale,
-    shoulderY: offsetY + 310 * scale,
-    bodyCX: W * 0.48,
-    bodyCY: offsetY + 420 * scale,
-    bodyW: 180 * scale,
-    waistY: offsetY + 480 * scale,
-    leftArmX: W * 0.25,
-    rightArmX: W * 0.72,
-    armY: offsetY + 350 * scale,
-    feetY: offsetY + 620 * scale,
-    headR: 120 * scale,
-  };
-}
+const LM = {
+  cx: 170,           // body center x
+  headTop: 96,       // top of skull
+  eyeY: 140,         // eye level
+  chinY: 174,        // chin
+  shoulderY: 190,    // shoulder line
+  chestY: 215,       // mid chest
+  waistY: 242,       // belly / waist
+  diaperY: 258,      // diaper top
+  crotchY: 283,      // crotch
+  feetY: 344,        // feet
+  torsoHalf: 44,     // half-width of torso
+};
 
 function drawBackground() {
   const bgs = {
-    toddler: ['#ffe6f0','#ffd6e7'],
-    monje: ['#2d1b00','#5c3a1e'],
-    ciclista: ['#e0f7fa','#80deea'],
-    maraton: ['#fff3e0','#ffcc80'],
-    jurassic: ['#1b5e20','#2e7d32'],
-    torero: ['#b71c1c','#e53935'],
-    f1: ['#37474f','#263238'],
-    base: ['#a5d6a7','#66bb6a']
+    toddler: ['#ffe6f0','#ffd6e7'], monje: ['#2d1b00','#5c3a1e'],
+    ciclista: ['#e0f7fa','#80deea'], maraton: ['#fff3e0','#ffcc80'],
+    jurassic: ['#1b5e20','#2e7d32'], torero: ['#b71c1c','#e53935'],
+    f1: ['#37474f','#263238'], base: ['#a5d6a7','#66bb6a']
   };
   const bg = bgs[currentSkin] || bgs.base;
   const grd = ctx.createLinearGradient(0, 0, 0, H);
-  grd.addColorStop(0, bg[0]);
-  grd.addColorStop(1, bg[1]);
-  ctx.fillStyle = grd;
-  ctx.fillRect(0, 0, W, H);
+  grd.addColorStop(0, bg[0]); grd.addColorStop(1, bg[1]);
+  ctx.fillStyle = grd; ctx.fillRect(0, 0, W, H);
 }
 
-function drawSceneBackground() {
-  const lm = getLandmarks();
-
+function drawSceneDecor() {
   if (currentSkin === 'jurassic') {
     ctx.fillStyle = '#2e7d32';
     for (let i = 0; i < 6; i++) {
       const tx = i * 65 + 15;
-      ctx.fillRect(tx, 60, 7, 50);
-      ctx.beginPath(); ctx.arc(tx + 3, 55, 22, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(tx, 50, 6, 40);
+      ctx.beginPath(); ctx.arc(tx + 3, 46, 20, 0, Math.PI * 2); ctx.fill();
     }
     ctx.strokeStyle = '#5d4037'; ctx.lineWidth = 3;
-    for (let i = 0; i < 8; i++) ctx.strokeRect(i * 46 + 8, H - 80, 5, 45);
-    ctx.beginPath(); ctx.moveTo(0, H - 65); ctx.lineTo(W, H - 65); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, H - 45); ctx.lineTo(W, H - 45); ctx.stroke();
+    for (let i = 0; i < 9; i++) ctx.strokeRect(i * 42 + 5, H - 75, 4, 40);
+    ctx.beginPath(); ctx.moveTo(0, H - 58); ctx.lineTo(W, H - 58); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, H - 42); ctx.lineTo(W, H - 42); ctx.stroke();
   }
   if (currentSkin === 'f1') {
-    ctx.fillStyle = '#424242'; ctx.fillRect(0, H - 70, W, 70);
-    ctx.setLineDash([20, 15]); ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(0, H - 35); ctx.lineTo(W, H - 35); ctx.stroke();
+    ctx.fillStyle = '#424242'; ctx.fillRect(0, H - 65, W, 65);
+    ctx.setLineDash([18, 12]); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, H - 32); ctx.lineTo(W, H - 32); ctx.stroke();
     ctx.setLineDash([]);
-    // Checkered flag at top
-    const sz = 12;
+    const sz = 11;
     for (let r = 0; r < 2; r++) for (let c = 0; c < Math.ceil(W/sz); c++) {
-      ctx.fillStyle = (r + c) % 2 === 0 ? '#fff' : '#000';
+      ctx.fillStyle = (r + c) % 2 === 0 ? '#fff' : '#111';
       ctx.fillRect(c * sz, r * sz, sz, sz);
     }
   }
   if (currentSkin === 'torero') {
-    ctx.fillStyle = '#d4a056'; ctx.fillRect(0, H - 80, W, 80);
+    ctx.fillStyle = '#d4a056'; ctx.fillRect(0, H - 75, W, 75);
     ctx.fillStyle = '#c49046';
-    ctx.beginPath(); ctx.ellipse(W/2, H - 60, 160, 30, 0, 0, Math.PI * 2); ctx.fill();
-    // Arena stands
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
-    ctx.fillRect(0, 0, W, 35);
+    ctx.beginPath(); ctx.ellipse(W/2, H - 55, 155, 28, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.15)'; ctx.fillRect(0, 0, W, 30);
     ctx.fillStyle = '#ffcc80';
-    for (let i = 0; i < 12; i++) {
-      ctx.beginPath(); ctx.arc(i * 30 + 15, 18, 5, 0, Math.PI * 2); ctx.fill();
-    }
+    for (let i = 0; i < 14; i++) { ctx.beginPath(); ctx.arc(i * 26 + 10, 15, 4, 0, Math.PI * 2); ctx.fill(); }
   }
   if (currentSkin === 'maraton') {
-    // Road
-    ctx.fillStyle = '#616161'; ctx.fillRect(0, H - 60, W, 60);
-    ctx.setLineDash([15, 10]); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(0, H - 30); ctx.lineTo(W, H - 30); ctx.stroke();
+    ctx.fillStyle = '#616161'; ctx.fillRect(0, H - 55, W, 55);
+    ctx.setLineDash([12, 8]); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, H - 28); ctx.lineTo(W, H - 28); ctx.stroke();
     ctx.setLineDash([]);
-    // Finish banner
-    ctx.fillStyle = '#1565c0'; ctx.fillRect(0, 0, W, 28);
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('META - 42.195 KM', W/2, 19);
+    ctx.fillStyle = '#1565c0'; ctx.fillRect(0, 0, W, 26);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('META - 42.195 KM', W/2, 18);
   }
   if (currentSkin === 'ciclista') {
-    // Mountains
     ctx.fillStyle = '#4dd0e1';
     ctx.beginPath();
-    ctx.moveTo(0, 120); ctx.lineTo(60, 40); ctx.lineTo(120, 100);
-    ctx.lineTo(180, 30); ctx.lineTo(250, 90); ctx.lineTo(320, 50); ctx.lineTo(W, 110);
-    ctx.lineTo(W, 150); ctx.lineTo(0, 150); ctx.fill();
-    ctx.fillStyle = '#616161'; ctx.fillRect(0, H - 50, W, 50);
-    // Road marking
-    ctx.setLineDash([12, 8]); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(0, H - 25); ctx.lineTo(W, H - 25); ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.moveTo(0, 100); ctx.lineTo(55, 35); ctx.lineTo(110, 85);
+    ctx.lineTo(170, 25); ctx.lineTo(240, 75); ctx.lineTo(310, 42); ctx.lineTo(W, 95);
+    ctx.lineTo(W, 130); ctx.lineTo(0, 130); ctx.fill();
+    ctx.fillStyle = '#616161'; ctx.fillRect(0, H - 45, W, 45);
   }
   if (currentSkin === 'monje') {
-    // Temple floor
-    ctx.fillStyle = '#4e342e'; ctx.fillRect(0, H - 50, W, 50);
-    // Zen circle
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(W/2, H/2, 130, -0.3, Math.PI * 1.7); ctx.stroke();
-    // Candles
-    for (let i of [40, W - 40]) {
-      ctx.fillStyle = '#fff3e0'; ctx.fillRect(i - 4, H - 80, 8, 30);
-      ctx.fillStyle = '#ff9800';
-      ctx.beginPath(); ctx.ellipse(i, H - 85, 5, 8, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#ffeb3b';
-      ctx.beginPath(); ctx.ellipse(i, H - 87, 3, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#4e342e'; ctx.fillRect(0, H - 45, W, 45);
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(W/2, H/2, 120, -0.3, Math.PI * 1.7); ctx.stroke();
+    for (let i of [35, W - 35]) {
+      ctx.fillStyle = '#fff3e0'; ctx.fillRect(i - 3, H - 72, 6, 26);
+      ctx.fillStyle = '#ff9800'; ctx.beginPath(); ctx.ellipse(i, H - 77, 4, 7, 0, 0, Math.PI * 2); ctx.fill();
     }
   }
 }
 
 function drawDinoImage() {
   if (!dinoImg) return;
-  const { scale, drawW, drawH, offsetY } = getDrawParams();
-  bounce += 0.5 * bounceDir;
-  if (bounce > 4 || bounce < -4) bounceDir *= -1;
+  const scale = W / dinoImg.naturalWidth;
+  const drawH2 = dinoImg.naturalHeight * scale;
+  const offsetY = (H - drawH2) / 2 - 10;
+  bounce += 0.45 * bounceDir;
+  if (bounce > 3.5 || bounce < -3.5) bounceDir *= -1;
   ctx.save();
   ctx.translate(0, bounce);
-  ctx.drawImage(dinoImg, 0, offsetY, drawW, drawH);
+  ctx.drawImage(dinoImg, 0, offsetY, W, drawH2);
   ctx.restore();
 }
 
 function drawSkinOverlays() {
-  const { scale, offsetY } = getDrawParams();
-  const lm = getLandmarks();
+  const L = LM;
   const by = bounce;
-
   ctx.save();
   ctx.translate(0, by);
 
+  // -- TODDLER --
   if (currentSkin === 'toddler') {
-    // Bib on chest
+    // Bib
     ctx.fillStyle = '#FFD700';
     ctx.beginPath();
-    ctx.moveTo(lm.bodyCX - 30, lm.shoulderY + 5);
-    ctx.lineTo(lm.bodyCX + 30, lm.shoulderY + 5);
-    ctx.lineTo(lm.bodyCX + 22, lm.shoulderY + 45);
-    ctx.lineTo(lm.bodyCX - 22, lm.shoulderY + 45);
+    ctx.moveTo(L.cx - 22, L.shoulderY + 5);
+    ctx.lineTo(L.cx + 22, L.shoulderY + 5);
+    ctx.lineTo(L.cx + 18, L.shoulderY + 38);
+    ctx.lineTo(L.cx - 18, L.shoulderY + 38);
     ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#e53935';
-    ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('NOT THE', lm.bodyCX, lm.shoulderY + 22);
-    ctx.fillText('MAMA!', lm.bodyCX, lm.shoulderY + 35);
+    ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('NOT THE', L.cx, L.shoulderY + 19);
+    ctx.fillText('MAMA!', L.cx, L.shoulderY + 31);
   }
 
+  // -- MONJE --
   if (currentSkin === 'monje') {
-    // Robe overlay on body
-    ctx.fillStyle = 'rgba(93, 64, 55, 0.85)';
+    // Robe - just on torso, not covering arms
+    ctx.fillStyle = 'rgba(93, 64, 55, 0.82)';
     ctx.beginPath();
-    ctx.moveTo(lm.bodyCX - 55, lm.shoulderY);
-    ctx.lineTo(lm.bodyCX + 55, lm.shoulderY);
-    ctx.lineTo(lm.bodyCX + 48, lm.feetY - 10);
-    ctx.lineTo(lm.bodyCX - 48, lm.feetY - 10);
+    ctx.moveTo(L.cx - L.torsoHalf, L.shoulderY);
+    ctx.lineTo(L.cx + L.torsoHalf, L.shoulderY);
+    ctx.lineTo(L.cx + L.torsoHalf - 4, L.diaperY + 10);
+    ctx.lineTo(L.cx - L.torsoHalf + 4, L.diaperY + 10);
     ctx.closePath(); ctx.fill();
-    // Belt rope
-    ctx.strokeStyle = '#d7ccc8'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(lm.bodyCX - 45, lm.waistY);
-    ctx.lineTo(lm.bodyCX + 45, lm.waistY); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(lm.bodyCX + 20, lm.waistY);
-    ctx.lineTo(lm.bodyCX + 15, lm.waistY + 30); ctx.stroke();
-    // Hood
-    ctx.fillStyle = 'rgba(93, 64, 55, 0.8)';
+    // Rope belt
+    ctx.strokeStyle = '#d7ccc8'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(L.cx - L.torsoHalf + 2, L.waistY);
+    ctx.lineTo(L.cx + L.torsoHalf - 2, L.waistY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(L.cx + 15, L.waistY);
+    ctx.lineTo(L.cx + 10, L.waistY + 22); ctx.stroke();
+    // Hood - sits on top of head, not covering face
+    ctx.fillStyle = 'rgba(93, 64, 55, 0.75)';
     ctx.beginPath();
-    ctx.moveTo(lm.headCX - 55, lm.headCY + 10);
-    ctx.quadraticCurveTo(lm.headCX, lm.headTopY - 50, lm.headCX + 55, lm.headCY + 10);
-    ctx.lineTo(lm.headCX + 58, lm.headCY + 25);
-    ctx.quadraticCurveTo(lm.headCX, lm.headTopY - 35, lm.headCX - 58, lm.headCY + 25);
+    ctx.moveTo(L.cx - 42, L.eyeY - 10);
+    ctx.quadraticCurveTo(L.cx, L.headTop - 45, L.cx + 42, L.eyeY - 10);
+    ctx.lineTo(L.cx + 46, L.eyeY);
+    ctx.quadraticCurveTo(L.cx, L.headTop - 30, L.cx - 46, L.eyeY);
     ctx.closePath(); ctx.fill();
   }
 
+  // -- CICLISTA --
   if (currentSkin === 'ciclista') {
     // Jersey
-    ctx.fillStyle = 'rgba(253, 216, 53, 0.88)';
+    ctx.fillStyle = 'rgba(253, 216, 53, 0.85)';
     ctx.beginPath();
-    ctx.moveTo(lm.bodyCX - 50, lm.shoulderY);
-    ctx.lineTo(lm.bodyCX + 50, lm.shoulderY);
-    ctx.lineTo(lm.bodyCX + 42, lm.waistY + 5);
-    ctx.lineTo(lm.bodyCX - 42, lm.waistY + 5);
+    ctx.moveTo(L.cx - L.torsoHalf, L.shoulderY);
+    ctx.lineTo(L.cx + L.torsoHalf, L.shoulderY);
+    ctx.lineTo(L.cx + L.torsoHalf - 3, L.waistY);
+    ctx.lineTo(L.cx - L.torsoHalf + 3, L.waistY);
     ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(245, 127, 23, 0.9)';
-    ctx.fillRect(lm.bodyCX - 45, lm.shoulderY + 25, 90, 7);
-    ctx.fillRect(lm.bodyCX - 45, lm.shoulderY + 45, 90, 7);
-    ctx.fillStyle = '#212121'; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('69', lm.bodyCX, lm.shoulderY + 22);
+    // Stripes
+    ctx.fillStyle = 'rgba(245, 127, 23, 0.85)';
+    ctx.fillRect(L.cx - L.torsoHalf + 2, L.chestY - 5, L.torsoHalf * 2 - 4, 5);
+    ctx.fillRect(L.cx - L.torsoHalf + 2, L.chestY + 12, L.torsoHalf * 2 - 4, 5);
+    // Number
+    ctx.fillStyle = '#212121'; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('69', L.cx, L.chestY - 8);
     // Shorts
-    ctx.fillStyle = 'rgba(33,33,33,0.85)';
-    ctx.fillRect(lm.bodyCX - 42, lm.waistY + 5, 84, 30);
+    ctx.fillStyle = 'rgba(33,33,33,0.8)';
+    ctx.fillRect(L.cx - L.torsoHalf + 2, L.waistY, L.torsoHalf * 2 - 4, 22);
     // Helmet
-    ctx.fillStyle = 'rgba(38,50,56,0.9)';
+    ctx.fillStyle = 'rgba(38,50,56,0.88)';
     ctx.beginPath();
-    ctx.ellipse(lm.headCX, lm.headTopY + 15, 52, 30, 0, Math.PI, 0); ctx.fill();
-    ctx.fillStyle = '#37474f';
-    for (let i = -2; i <= 2; i++) ctx.fillRect(lm.headCX + i * 14 - 3, lm.headTopY - 10, 6, 14);
-    ctx.fillStyle = 'rgba(0,188,212,0.45)';
-    ctx.beginPath();
-    ctx.ellipse(lm.headCX, lm.headTopY + 20, 54, 8, 0, 0, Math.PI); ctx.fill();
+    ctx.ellipse(L.cx, L.headTop + 8, 48, 22, 0, Math.PI, 0); ctx.fill();
+    // Vents
+    ctx.fillStyle = '#455a64';
+    for (let i = -2; i <= 2; i++) ctx.fillRect(L.cx + i * 12 - 2, L.headTop - 10, 5, 10);
+    // Visor
+    ctx.fillStyle = 'rgba(0,188,212,0.4)';
+    ctx.beginPath(); ctx.ellipse(L.cx, L.headTop + 12, 50, 6, 0, 0, Math.PI); ctx.fill();
   }
 
+  // -- MARATON --
   if (currentSkin === 'maraton') {
     // Singlet
-    ctx.fillStyle = 'rgba(229,57,53,0.85)';
+    ctx.fillStyle = 'rgba(229,57,53,0.82)';
     ctx.beginPath();
-    ctx.moveTo(lm.bodyCX - 42, lm.shoulderY);
-    ctx.lineTo(lm.bodyCX + 42, lm.shoulderY);
-    ctx.lineTo(lm.bodyCX + 38, lm.waistY);
-    ctx.lineTo(lm.bodyCX - 38, lm.waistY);
+    ctx.moveTo(L.cx - L.torsoHalf + 5, L.shoulderY);
+    ctx.lineTo(L.cx + L.torsoHalf - 5, L.shoulderY);
+    ctx.lineTo(L.cx + L.torsoHalf - 6, L.waistY);
+    ctx.lineTo(L.cx - L.torsoHalf + 6, L.waistY);
     ctx.closePath(); ctx.fill();
-    // Race number
+    // Number bib
     ctx.fillStyle = '#fff';
-    ctx.fillRect(lm.bodyCX - 22, lm.shoulderY + 10, 44, 28);
-    ctx.fillStyle = '#000'; ctx.font = 'bold 16px monospace'; ctx.textAlign = 'center';
-    ctx.fillText('502', lm.bodyCX, lm.shoulderY + 32);
+    ctx.fillRect(L.cx - 18, L.chestY - 8, 36, 22);
+    ctx.fillStyle = '#000'; ctx.font = 'bold 13px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('502', L.cx, L.chestY + 9);
     // Shorts
-    ctx.fillStyle = 'rgba(26,35,126,0.85)';
-    ctx.fillRect(lm.bodyCX - 40, lm.waistY, 80, 25);
+    ctx.fillStyle = 'rgba(26,35,126,0.8)';
+    ctx.fillRect(L.cx - L.torsoHalf + 4, L.waistY, L.torsoHalf * 2 - 8, 20);
     // Headband
-    ctx.fillStyle = 'rgba(229,57,53,0.9)';
-    ctx.fillRect(lm.headCX - 48, lm.headTopY + 20, 96, 8);
-    // Sweat
-    ctx.fillStyle = 'rgba(41,182,246,0.6)';
-    const swY = (Date.now() / 12) % 50;
-    ctx.beginPath(); ctx.arc(lm.headCX - 45, lm.headTopY + 35 + swY, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(lm.headCX + 47, lm.headTopY + 40 + swY * 0.7, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(229,57,53,0.88)';
+    ctx.fillRect(L.cx - 45, L.eyeY - 18, 90, 7);
+    // Sweat drops
+    ctx.fillStyle = 'rgba(41,182,246,0.55)';
+    const sw = (Date.now() / 14) % 45;
+    ctx.beginPath(); ctx.arc(L.cx - 42, L.eyeY - 5 + sw, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(L.cx + 44, L.eyeY + sw * 0.6, 2, 0, Math.PI * 2); ctx.fill();
   }
 
+  // -- JURASSIC --
   if (currentSkin === 'jurassic') {
     // Khaki vest
-    ctx.fillStyle = 'rgba(161,136,127,0.88)';
+    ctx.fillStyle = 'rgba(161,136,127,0.85)';
     ctx.beginPath();
-    ctx.moveTo(lm.bodyCX - 52, lm.shoulderY);
-    ctx.lineTo(lm.bodyCX + 52, lm.shoulderY);
-    ctx.lineTo(lm.bodyCX + 45, lm.waistY + 15);
-    ctx.lineTo(lm.bodyCX - 45, lm.waistY + 15);
+    ctx.moveTo(L.cx - L.torsoHalf - 2, L.shoulderY);
+    ctx.lineTo(L.cx + L.torsoHalf + 2, L.shoulderY);
+    ctx.lineTo(L.cx + L.torsoHalf, L.diaperY);
+    ctx.lineTo(L.cx - L.torsoHalf, L.diaperY);
     ctx.closePath(); ctx.fill();
     // Pockets
-    ctx.strokeStyle = '#795548'; ctx.lineWidth = 1.5;
-    ctx.strokeRect(lm.bodyCX - 35, lm.waistY - 20, 22, 16);
-    ctx.strokeRect(lm.bodyCX + 13, lm.waistY - 20, 22, 16);
-    // Khaki shorts
-    ctx.fillStyle = 'rgba(188,170,164,0.85)';
-    ctx.fillRect(lm.bodyCX - 42, lm.waistY + 15, 84, 22);
+    ctx.strokeStyle = '#795548'; ctx.lineWidth = 1.2;
+    ctx.strokeRect(L.cx - L.torsoHalf + 5, L.waistY - 15, 18, 13);
+    ctx.strokeRect(L.cx + L.torsoHalf - 23, L.waistY - 15, 18, 13);
     // InGen badge
-    ctx.fillStyle = '#fff'; ctx.fillRect(lm.bodyCX + 16, lm.shoulderY + 5, 28, 14);
-    ctx.fillStyle = '#e53935'; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('InGen', lm.bodyCX + 30, lm.shoulderY + 15);
+    ctx.fillStyle = '#fff'; ctx.fillRect(L.cx + 10, L.shoulderY + 4, 24, 11);
+    ctx.fillStyle = '#e53935'; ctx.font = 'bold 7px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('InGen', L.cx + 22, L.shoulderY + 12);
+    // Shorts
+    ctx.fillStyle = 'rgba(188,170,164,0.8)';
+    ctx.fillRect(L.cx - L.torsoHalf + 2, L.diaperY, L.torsoHalf * 2 - 4, 18);
     // Safari hat
-    ctx.fillStyle = 'rgba(141,110,99,0.9)';
-    ctx.beginPath(); ctx.ellipse(lm.headCX, lm.headTopY + 10, 58, 11, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(141,110,99,0.88)';
+    ctx.beginPath(); ctx.ellipse(L.cx, L.headTop + 2, 55, 10, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#795548';
-    ctx.beginPath(); ctx.ellipse(lm.headCX, lm.headTopY + 2, 38, 20, 0, Math.PI, 0); ctx.fill();
-    ctx.fillStyle = '#4e342e'; ctx.fillRect(lm.headCX - 38, lm.headTopY + 4, 76, 5);
+    ctx.beginPath(); ctx.ellipse(L.cx, L.headTop - 5, 34, 16, 0, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = '#4e342e'; ctx.fillRect(L.cx - 34, L.headTop - 2, 68, 4);
   }
 
+  // -- TORERO --
   if (currentSkin === 'torero') {
-    // Traje de luces
-    ctx.fillStyle = 'rgba(183,28,28,0.88)';
+    // Jacket
+    ctx.fillStyle = 'rgba(183,28,28,0.85)';
     ctx.beginPath();
-    ctx.moveTo(lm.bodyCX - 52, lm.shoulderY);
-    ctx.lineTo(lm.bodyCX + 52, lm.shoulderY);
-    ctx.lineTo(lm.bodyCX + 44, lm.waistY + 8);
-    ctx.lineTo(lm.bodyCX - 44, lm.waistY + 8);
+    ctx.moveTo(L.cx - L.torsoHalf - 2, L.shoulderY);
+    ctx.lineTo(L.cx + L.torsoHalf + 2, L.shoulderY);
+    ctx.lineTo(L.cx + L.torsoHalf, L.waistY + 5);
+    ctx.lineTo(L.cx - L.torsoHalf, L.waistY + 5);
     ctx.closePath(); ctx.fill();
     // Gold trim
-    ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 2.5;
-    ctx.strokeRect(lm.bodyCX - 50, lm.shoulderY + 2, 100, lm.waistY - lm.shoulderY + 4);
+    ctx.strokeStyle = '#FFD700'; ctx.lineWidth = 2;
+    ctx.strokeRect(L.cx - L.torsoHalf, L.shoulderY + 1, L.torsoHalf * 2, L.waistY - L.shoulderY + 3);
     // Epaulettes
     ctx.fillStyle = '#FFD700';
-    ctx.beginPath(); ctx.arc(lm.bodyCX - 50, lm.shoulderY + 8, 9, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(lm.bodyCX + 50, lm.shoulderY + 8, 9, 0, Math.PI * 2); ctx.fill();
-    // Tight pants with gold stripes
-    ctx.fillStyle = 'rgba(136,14,79,0.85)';
-    ctx.fillRect(lm.bodyCX - 38, lm.waistY + 8, 76, 50);
+    ctx.beginPath(); ctx.arc(L.cx - L.torsoHalf - 2, L.shoulderY + 6, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(L.cx + L.torsoHalf + 2, L.shoulderY + 6, 7, 0, Math.PI * 2); ctx.fill();
+    // Tight pants
+    ctx.fillStyle = 'rgba(136,14,79,0.82)';
+    ctx.fillRect(L.cx - L.torsoHalf + 2, L.waistY + 5, L.torsoHalf * 2 - 4, 35);
+    // Gold side stripes
     ctx.fillStyle = '#FFD700';
-    ctx.fillRect(lm.bodyCX - 38, lm.waistY + 8, 3, 50);
-    ctx.fillRect(lm.bodyCX + 35, lm.waistY + 8, 3, 50);
+    ctx.fillRect(L.cx - L.torsoHalf + 2, L.waistY + 5, 3, 35);
+    ctx.fillRect(L.cx + L.torsoHalf - 5, L.waistY + 5, 3, 35);
     // Montera
-    ctx.fillStyle = 'rgba(26,26,26,0.9)';
-    ctx.beginPath(); ctx.ellipse(lm.headCX, lm.headTopY + 8, 46, 13, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(lm.headCX, lm.headTopY - 2, 32, 22, 0, Math.PI, 0); ctx.fill();
-    ctx.beginPath(); ctx.arc(lm.headCX - 33, lm.headTopY + 12, 9, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(lm.headCX + 33, lm.headTopY + 12, 9, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(26,26,26,0.88)';
+    ctx.beginPath(); ctx.ellipse(L.cx, L.headTop + 4, 44, 12, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(L.cx, L.headTop - 5, 30, 18, 0, Math.PI, 0); ctx.fill();
+    ctx.beginPath(); ctx.arc(L.cx - 32, L.headTop + 8, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(L.cx + 32, L.headTop + 8, 8, 0, Math.PI * 2); ctx.fill();
     // Cape (animated)
-    const capeSwing = Math.sin(Date.now() / 400) * 12;
-    ctx.fillStyle = 'rgba(233,30,99,0.6)';
+    const capeSwing = Math.sin(Date.now() / 400) * 10;
+    ctx.fillStyle = 'rgba(233,30,99,0.55)';
     ctx.beginPath();
-    ctx.moveTo(lm.bodyCX + 55, lm.shoulderY + 15);
-    ctx.quadraticCurveTo(lm.bodyCX + 130, lm.bodyCY + capeSwing, lm.bodyCX + 95, lm.feetY);
-    ctx.quadraticCurveTo(lm.bodyCX + 70, lm.feetY - 20, lm.bodyCX + 55, lm.waistY + 20);
+    ctx.moveTo(L.cx + L.torsoHalf + 5, L.shoulderY + 10);
+    ctx.quadraticCurveTo(L.cx + 120, L.chestY + 30 + capeSwing, L.cx + 90, L.feetY - 10);
+    ctx.quadraticCurveTo(L.cx + 65, L.feetY - 30, L.cx + L.torsoHalf + 5, L.waistY + 15);
     ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(255,215,0,0.35)';
+    ctx.fillStyle = 'rgba(255,215,0,0.3)';
     ctx.beginPath();
-    ctx.moveTo(lm.bodyCX + 60, lm.shoulderY + 25);
-    ctx.quadraticCurveTo(lm.bodyCX + 120, lm.bodyCY + capeSwing * 0.8, lm.bodyCX + 88, lm.feetY - 10);
-    ctx.quadraticCurveTo(lm.bodyCX + 68, lm.feetY - 30, lm.bodyCX + 60, lm.waistY + 25);
+    ctx.moveTo(L.cx + L.torsoHalf + 10, L.shoulderY + 20);
+    ctx.quadraticCurveTo(L.cx + 110, L.chestY + 25 + capeSwing * 0.8, L.cx + 85, L.feetY - 20);
+    ctx.quadraticCurveTo(L.cx + 65, L.feetY - 35, L.cx + L.torsoHalf + 10, L.waistY + 20);
     ctx.closePath(); ctx.fill();
   }
 
+  // -- F1 FERRARI --
   if (currentSkin === 'f1') {
-    // Race suit
-    ctx.fillStyle = 'rgba(211,47,47,0.88)';
+    // Full race suit
+    ctx.fillStyle = 'rgba(211,47,47,0.85)';
     ctx.beginPath();
-    ctx.moveTo(lm.bodyCX - 52, lm.shoulderY);
-    ctx.lineTo(lm.bodyCX + 52, lm.shoulderY);
-    ctx.lineTo(lm.bodyCX + 45, lm.feetY - 10);
-    ctx.lineTo(lm.bodyCX - 45, lm.feetY - 10);
+    ctx.moveTo(L.cx - L.torsoHalf, L.shoulderY);
+    ctx.lineTo(L.cx + L.torsoHalf, L.shoulderY);
+    ctx.lineTo(L.cx + L.torsoHalf - 2, L.crotchY);
+    ctx.lineTo(L.cx - L.torsoHalf + 2, L.crotchY);
     ctx.closePath(); ctx.fill();
     // White stripe
-    ctx.fillStyle = '#fff'; ctx.fillRect(lm.bodyCX - 5, lm.shoulderY, 10, lm.feetY - lm.shoulderY - 10);
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.fillRect(L.cx - 4, L.shoulderY, 8, L.crotchY - L.shoulderY);
     // Ferrari text
-    ctx.fillStyle = '#FFD700'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('Ferrari', lm.bodyCX, lm.shoulderY + 20);
+    ctx.fillStyle = '#FFD700'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('Ferrari', L.cx, L.shoulderY + 15);
     // Sponsors
-    ctx.fillStyle = '#fff'; ctx.font = '8px sans-serif';
-    ctx.fillText('Shell', lm.bodyCX - 25, lm.waistY - 5);
-    ctx.fillText('UPS', lm.bodyCX + 25, lm.waistY - 5);
-    ctx.font = '20px sans-serif'; ctx.fillText('🐴', lm.bodyCX, lm.waistY + 20);
+    ctx.fillStyle = '#fff'; ctx.font = '7px sans-serif';
+    ctx.fillText('Shell', L.cx - 22, L.chestY + 5);
+    ctx.fillText('UPS', L.cx + 22, L.chestY + 5);
+    // Horse emoji
+    ctx.font = '16px sans-serif'; ctx.fillText('🐴', L.cx, L.waistY + 10);
     // Helmet
-    ctx.fillStyle = 'rgba(211,47,47,0.92)';
-    ctx.beginPath(); ctx.ellipse(lm.headCX, lm.headTopY + 10, 52, 38, 0, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = 'rgba(211,47,47,0.9)';
+    ctx.beginPath(); ctx.ellipse(L.cx, L.headTop + 10, 48, 30, 0, Math.PI, 0); ctx.fill();
     // Visor
-    ctx.fillStyle = 'rgba(33,33,33,0.65)';
-    ctx.beginPath(); ctx.ellipse(lm.headCX, lm.headTopY + 18, 46, 13, 0, 0, Math.PI * 0.85); ctx.fill();
+    ctx.fillStyle = 'rgba(33,33,33,0.6)';
+    ctx.beginPath(); ctx.ellipse(L.cx, L.headTop + 14, 44, 10, 0, 0, Math.PI * 0.8); ctx.fill();
     // Number
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText('16', lm.headCX, lm.headTopY);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('16', L.cx, L.headTop - 2);
   }
 
   ctx.restore();
 
-  // Speech bubble (not affected by bounce)
+  // Speech bubble (outside bounce transform)
   mouthPhase += 0.03;
   const talking = Math.sin(mouthPhase * 3) > 0.3;
   const phrases = {
-    toddler: '¡No soy\nel mamá!',
-    monje: 'Om...\nnamaste',
-    ciclista: '¡Allez\nallez!',
-    maraton: '¡Ya casi\nllego!',
-    jurassic: '¡Clever\ngirl!',
-    torero: '¡Olé!\n¡Torero!',
-    f1: '¡Forza\nFerrari!',
-    base: '¡Soy el\nGordo!'
+    toddler: '¡No soy\nel mamá!', monje: 'Om...\nnamaste',
+    ciclista: '¡Allez\nallez!', maraton: '¡Ya casi\nllego!',
+    jurassic: '¡Clever\ngirl!', torero: '¡Olé!\n¡Torero!',
+    f1: '¡Forza\nFerrari!', base: '¡Soy el\nGordo!'
   };
   if (talking) {
-    const bx = lm.headCX + 50, byy = lm.headTopY - 20 + by;
+    const bx = L.cx + 55, byy = L.headTop - 30 + by;
     ctx.fillStyle = '#fff';
-    // Pointer
     ctx.beginPath();
-    ctx.moveTo(bx - 5, byy + 40);
-    ctx.lineTo(bx - 15, byy + 55);
-    ctx.lineTo(bx + 5, byy + 45);
+    ctx.moveTo(bx - 8, byy + 42);
+    ctx.lineTo(bx - 18, byy + 55);
+    ctx.lineTo(bx + 2, byy + 47);
     ctx.closePath(); ctx.fill();
-    // Bubble
-    roundRect(ctx, bx - 5, byy - 5, 115, 48, 10); ctx.fill();
-    ctx.fillStyle = '#333'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+    roundRect(ctx, bx - 8, byy, 110, 44, 10); ctx.fill();
+    ctx.fillStyle = '#333'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
     const lines = (phrases[currentSkin] || '¡Hola!').split('\n');
-    lines.forEach((line, i) => ctx.fillText(line, bx + 52, byy + 15 + i * 16));
+    lines.forEach((line, i) => ctx.fillText(line, bx + 47, byy + 17 + i * 15));
   }
 
   // Label
@@ -515,12 +484,10 @@ function roundRect(ctx, x, y, w, h, r) {
 function animate() {
   ctx.clearRect(0, 0, W, H);
   drawBackground();
-  drawSceneBackground();
-  if (loaded) {
-    drawDinoImage();
-    drawSkinOverlays();
-  } else {
-    ctx.fillStyle = '#fff'; ctx.font = '16px sans-serif'; ctx.textAlign = 'center';
+  drawSceneDecor();
+  if (loaded) { drawDinoImage(); drawSkinOverlays(); }
+  else {
+    ctx.fillStyle = '#fff'; ctx.font = '15px sans-serif'; ctx.textAlign = 'center';
     ctx.fillText('Cargando al Gordo...', W/2, H/2);
   }
   requestAnimationFrame(animate);
